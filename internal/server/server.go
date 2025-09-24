@@ -31,6 +31,27 @@ func InitDataStore(dbPath string, seedPath string) error {
 	return nil
 }
 
+// InitDataStoreForVMWatcher initializes the datastore with empty datacenter structure from VM watcher config
+func InitDataStoreForVMWatcher(dbPath string, watcherConfigPath string) error {
+	if dbPath == "" {
+		dbPath = "/tmp/summit-connect.db"
+	}
+	
+	// Create datastore (may initialize with sample data, but we'll override it)
+	ds, err := data.NewDataStore(dbPath, "")
+	if err != nil {
+		return err
+	}
+	
+	// Override with proper datacenter structure from VM watcher config
+	if err := ds.InitializeFromVMWatcherConfig(watcherConfigPath); err != nil {
+		return fmt.Errorf("failed to initialize from VM watcher config: %w", err)
+	}
+	
+	dataStore = ds
+	return nil
+}
+
 // InitVMWatcher initializes and starts the VM watcher
 func InitVMWatcher(configPath string) error {
 	if dataStore == nil {
