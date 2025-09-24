@@ -185,7 +185,8 @@ class StockholmDatacentersMap {
             firstFewVMs.forEach(vm => {
                 const readyIcon = vm.ready === true ? '✓' : vm.ready === false ? '✗' : '?';
                 const nodeInfo = vm.nodeName ? ` @ ${vm.nodeName}` : '';
-                vmSummary += `• ${vm.name} (${vm.status}) ${readyIcon}${nodeInfo}<br/>`;
+                const clusterInfo = vm.cluster ? ` [${vm.cluster}]` : '';
+                vmSummary += `• ${vm.name} (${vm.status}) ${readyIcon}${nodeInfo}${clusterInfo}<br/>`;
             });
             if (datacenter.vms.length > 3) {
                 vmSummary += `• ...and ${datacenter.vms.length - 3} more<br/>`;
@@ -277,6 +278,7 @@ class StockholmDatacentersMap {
             // Build VM status and KubeVirt info - use phase instead of status to avoid duplication
             const vmStatus = vm.phase || vm.status || 'Unknown';
             let kubeVirtInfo = '';
+            if (vm.cluster) kubeVirtInfo += ` • Cluster: ${vm.cluster}`;
             if (vm.namespace) kubeVirtInfo += ` • NS: ${vm.namespace}`;
             if (vm.ip) kubeVirtInfo += ` • IP: ${vm.ip}`;
             if (vm.nodeName) kubeVirtInfo += ` • Node: ${vm.nodeName}`;

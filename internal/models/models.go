@@ -12,6 +12,7 @@ type VM struct {
 	Disk           int        `json:"disk"`
 	LastMigratedAt *time.Time `json:"_lastMigratedAt,omitempty"`
 	// Kubernetes / KubeVirt fields
+	Cluster   string `json:"cluster,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
 	Phase     string `json:"phase,omitempty"`
 	IP        string `json:"ip,omitempty"`
@@ -26,6 +27,7 @@ type Datacenter struct {
 	Name        string    `json:"name"`
 	Location    string    `json:"location"`
 	Coordinates []float64 `json:"coordinates"`
+	Clusters    []string  `json:"clusters,omitempty"`
 	VMs         []VM      `json:"vms"`
 }
 

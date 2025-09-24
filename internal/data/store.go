@@ -257,7 +257,7 @@ func (ds *DataStore) UpdateDatacenter(id string, name *string, location *string,
 }
 
 // UpdateVM updates fields of a VM in a datacenter
-func (ds *DataStore) UpdateVM(dcID, vmID string, name *string, status *string, cpu *int, memory *int, disk *int) (*models.VM, error) {
+func (ds *DataStore) UpdateVM(dcID, vmID string, name *string, status *string, cpu *int, memory *int, disk *int, cluster *string) (*models.VM, error) {
 	start := time.Now()
 	fmt.Printf("[DataStore] UpdateVM entry dc=%s vm=%s\n", dcID, vmID)
 	ds.mu.Lock()
@@ -280,6 +280,9 @@ func (ds *DataStore) UpdateVM(dcID, vmID string, name *string, status *string, c
 					}
 					if disk != nil {
 						vm.Disk = *disk
+					}
+					if cluster != nil {
+						vm.Cluster = *cluster
 					}
 					copy := *vm
 					// marshal and write

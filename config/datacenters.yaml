@@ -3,57 +3,63 @@ datacenters:
     name: "Stockholm Sollentuna DC"
     location: "Sollentuna, Stockholm"
     coordinates: [59.41966666666667, 17.94661111111111]
-    vms:
-      - id: planet-01
-        name: planet-01
-        status: running
-        cpu: 4
-        memory: 8192
-        disk: 100
-        namespace: borg-infraenv-nodes
-        phase: Running
-        ip: 10.201.0.247
-        nodeName: yoda.codell.io
-        ready: true
-        age: 16h
-      - id: planet-02
-        name: planet-02
-        status: running
-        cpu: 4
-        memory: 8192
-        disk: 100
-        namespace: borg-infraenv-nodes
-        phase: Running
-        ip: 10.201.0.201
-        nodeName: yoda.codell.io
-        ready: true
-        age: 16h
-      - id: planet-03
-        name: planet-03
-        status: running
-        cpu: 4
-        memory: 8192
-        disk: 100
-        namespace: borg-infraenv-nodes
-        phase: Running
-        ip: 10.201.0.253
-        nodeName: yoda.codell.io
-        ready: true
-        age: 15h
+    clusters:
+    - name: vulcan
+      kubeconfig: ../.kubeconfigs/vulcan.yaml # Relative to the config file
+    #vms:
+    #  - id: planet-01
+    #    name: planet-01
+    #    status: running
+    #    cpu: 4
+    #    memory: 8192
+    #    disk: 100
+    #    namespace: borg-infraenv-nodes
+    #    phase: Running
+    #    ip: 10.201.0.247
+    #    nodeName: yoda.codell.io
+    #    ready: true
+    #    age: 16h
+    #  - id: planet-02
+    #    name: planet-02
+    #    status: running
+    #    cpu: 4
+    #    memory: 8192
+    #    disk: 100
+    #    namespace: borg-infraenv-nodes
+    #    phase: Running
+    #    ip: 10.201.0.201
+    #    nodeName: yoda.codell.io
+    #    ready: true
+    #    age: 16h
+    #  - id: planet-03
+    #    name: planet-03
+    #    status: running
+    #    cpu: 4
+    #    memory: 8192
+    #    disk: 100
+    #    namespace: borg-infraenv-nodes
+    #    phase: Running
+    #    ip: 10.201.0.253
+    #    nodeName: yoda.codell.io
+    #    ready: true
+    #    age: 15h
   - id: dc-solna
     name: "Stockholm Solna DC"
     location: "Järvastaden, Solna"
     coordinates: [59.38162465568805, 17.98030981149373]
-    vms:
-      - id: rhel9-silver-giraffe-21
-        name: rhel9-silver-giraffe-21
-        status: running
-        cpu: 8
-        memory: 16384
-        disk: 200
-        namespace: default
-        phase: Running
-        ip: 192.168.10.32
-        nodeName: borg.blahonga.me
-        ready: true
-        age: 16h
+    clusters:
+    - name: borg
+      kubeconfig: ../.kubeconfigs/borg.yaml # Relative to the config file
+    #vms:
+    #  - id: rhel9-silver-giraffe-21
+    #    name: rhel9-silver-giraffe-21
+    #    status: running
+    #    cpu: 8
+    #    memory: 16384
+    #    disk: 200
+    #    namespace: default
+    #    phase: Running
+    #    ip: 192.168.10.32
+    #    nodeName: borg.blahonga.me
+    #    ready: true
+    #    age: 16h
