@@ -10,6 +10,7 @@ import (
 
 	bbolt "github.com/etcd-io/bbolt"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 
 	"github.com/cldmnky/summit-connect-stockholm-2025/internal/models"
 )
@@ -111,6 +112,77 @@ func NewDataStore(dbPath string, jsonSeedPath string) (*DataStore, error) {
 // Close closes the BoltDB
 func (ds *DataStore) Close() error {
 	return ds.db.Close()
+}
+
+// InitializeFromVMWatcherConfig creates datacenter structure from VM watcher config (without VMs)
+func (ds *DataStore) InitializeFromVMWatcherConfig(configPath string) error {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
+	// Define a temporary structure to read the VM watcher config
+	type WatcherDatacenter struct {
+		ID          string    `yaml:"id"`
+		Name        string    `yaml:"name"`
+		Location    string    `yaml:"location"`
+		Coordinates []float64 `yaml:"coordinates"`
+		Clusters    []struct {
+			Name       string `yaml:"name"`
+			Kubeconfig string `yaml:"kubeconfig"`
+		} `yaml:"clusters"`
+	}
+	
+	type WatcherConfig struct {
+		Datacenters []WatcherDatacenter `yaml:"datacenters"`
+	}
+
+	// Read the VM watcher config file
+	file, err := os.Open(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to open config file %s: %w", configPath, err)
+	}
+	defer file.Close()
+
+	var watcherConfig WatcherConfig
+	decoder := yaml.NewDecoder(file)
+	if err := decoder.Decode(&watcherConfig); err != nil {
+		return fmt.Errorf("failed to decode config file %s: %w", configPath, err)
+	}
+
+	// Convert to DatacenterCollection (without VMs - they'll be populated by the watcher)
+	var datacenters []models.Datacenter
+	for _, wdc := range watcherConfig.Datacenters {
+		var clusterNames []string
+		for _, cluster := range wdc.Clusters {
+			clusterNames = append(clusterNames, cluster.Name)
+		}
+		
+		datacenter := models.Datacenter{
+			ID:          wdc.ID,
+			Name:        wdc.Name,
+			Location:    wdc.Location,
+			Coordinates: wdc.Coordinates,
+			Clusters:    clusterNames,
+			VMs:         []models.VM{}, // Empty - will be populated by VM watcher
+		}
+		datacenters = append(datacenters, datacenter)
+	}
+
+	ds.data = &models.DatacenterCollection{
+		Datacenters: datacenters,
+	}
+
+	// Persist the empty datacenter structure
+	buf, err := json.Marshal(ds.data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal datacenter structure: %w", err)
+	}
+
+	if err := ds.writeToDB(buf); err != nil {
+		return fmt.Errorf("failed to persist datacenter structure: %w", err)
+	}
+
+	fmt.Printf("[DataStore] initialized from VM watcher config: %s with %d datacenters\n", configPath, len(datacenters))
+	return nil
 }
 
 // loadFromJSONFile reads a JSON file and sets ds.data (used for seeding)

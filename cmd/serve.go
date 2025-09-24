@@ -51,22 +51,35 @@ Examples:
 				os.Setenv("SUMMIT_DB", dbPath)
 			}
 			log.Printf("Starting backend API server on port %d", port)
-			// initialize datastore explicitly with the provided dbPath and optional seed path
-			// If a config path was provided use that (Viper will handle it). Otherwise leave seedPath empty
-			// so the DataStore will try viper's default lookup locations (including ./config)
-			seedPath := ""
-			if configPath != "" {
-				seedPath = configPath
-			}
-			if err := server.InitDataStore(dbPath, seedPath); err != nil {
-				log.Fatalf("failed to init datastore: %v", err)
-			}
-
-			// Initialize VM watcher if enabled
+			
+			// When VM watcher is enabled, we want to initialize with datacenter structure
+			// but let the watcher populate the actual VMs from KubeVirt clusters
 			if watchVMs {
+				// Use the datacenter config for both DataStore and VM watcher
 				datacenterConfigPath := "config/datacenters.yaml"
+				if configPath != "" {
+					datacenterConfigPath = configPath
+				}
+				
+				// Initialize datastore with datacenter structure from VM watcher config (no sample data)
+				if err := server.InitDataStoreForVMWatcher(dbPath, datacenterConfigPath); err != nil {
+					log.Fatalf("failed to init datastore for VM watcher: %v", err)
+				}
+				
+				// Initialize VM watcher to populate real VMs
 				if err := server.InitVMWatcher(datacenterConfigPath); err != nil {
 					log.Fatalf("failed to init VM watcher: %v", err)
+				}
+			} else {
+				// Without VM watcher, use traditional initialization
+				// If a config path was provided use that (Viper will handle it). Otherwise leave seedPath empty
+				// so the DataStore will try viper's default lookup locations (including ./config)
+				seedPath := ""
+				if configPath != "" {
+					seedPath = configPath
+				}
+				if err := server.InitDataStore(dbPath, seedPath); err != nil {
+					log.Fatalf("failed to init datastore: %v", err)
 				}
 			}
 
