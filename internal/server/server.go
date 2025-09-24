@@ -12,9 +12,11 @@ import (
 
 	"github.com/cldmnky/summit-connect-stockholm-2025/internal/data"
 	"github.com/cldmnky/summit-connect-stockholm-2025/internal/models"
+	"github.com/cldmnky/summit-connect-stockholm-2025/internal/watcher"
 )
 
 var dataStore *data.DataStore
+var vmWatcher *watcher.VMWatcher
 
 // InitDataStore initializes the package-level datastore. Call this before StartBackendServer.
 func InitDataStore(dbPath string, seedPath string) error {
@@ -26,6 +28,51 @@ func InitDataStore(dbPath string, seedPath string) error {
 		return err
 	}
 	dataStore = ds
+	return nil
+}
+
+// InitDataStoreForVMWatcher initializes the datastore with empty datacenter structure from VM watcher config
+func InitDataStoreForVMWatcher(dbPath string, watcherConfigPath string) error {
+	if dbPath == "" {
+		dbPath = "/tmp/summit-connect.db"
+	}
+
+	// Create datastore (may initialize with sample data, but we'll override it)
+	ds, err := data.NewDataStore(dbPath, "")
+	if err != nil {
+		return err
+	}
+
+	// Override with proper datacenter structure from VM watcher config
+	if err := ds.InitializeFromVMWatcherConfig(watcherConfigPath); err != nil {
+		return fmt.Errorf("failed to initialize from VM watcher config: %w", err)
+	}
+
+	dataStore = ds
+	return nil
+}
+
+// InitVMWatcher initializes and starts the VM watcher
+func InitVMWatcher(configPath string) error {
+	if dataStore == nil {
+		return fmt.Errorf("datastore must be initialized before starting VM watcher")
+	}
+
+	watcher, err := watcher.NewVMWatcher(dataStore, configPath)
+	if err != nil {
+		return fmt.Errorf("failed to create VM watcher: %w", err)
+	}
+
+	vmWatcher = watcher
+
+	// Start the watcher in background
+	go func() {
+		if err := vmWatcher.Start(); err != nil {
+			log.Printf("Failed to start VM watcher: %v", err)
+		}
+	}()
+
+	log.Printf("VM watcher initialized and started")
 	return nil
 }
 
@@ -94,11 +141,12 @@ func StartBackendServer(port int) {
 		dcId := c.Params("dcId")
 		vmId := c.Params("vmId")
 		var payload struct {
-			Name   *string `json:"name,omitempty"`
-			Status *string `json:"status,omitempty"`
-			CPU    *int    `json:"cpu,omitempty"`
-			Memory *int    `json:"memory,omitempty"`
-			Disk   *int    `json:"disk,omitempty"`
+			Name    *string `json:"name,omitempty"`
+			Status  *string `json:"status,omitempty"`
+			CPU     *int    `json:"cpu,omitempty"`
+			Memory  *int    `json:"memory,omitempty"`
+			Disk    *int    `json:"disk,omitempty"`
+			Cluster *string `json:"cluster,omitempty"`
 		}
 		log.Printf("ADMIN: PATCH vm %s in dc %s - raw body: %s", vmId, dcId, string(c.Body()))
 		if err := c.BodyParser(&payload); err != nil {
@@ -107,7 +155,7 @@ func StartBackendServer(port int) {
 		}
 		log.Printf("ADMIN: PATCH vm %s in dc %s - parsed payload: %+v", vmId, dcId, payload)
 
-		vm, err := dataStore.UpdateVM(dcId, vmId, payload.Name, payload.Status, payload.CPU, payload.Memory, payload.Disk)
+		vm, err := dataStore.UpdateVM(dcId, vmId, payload.Name, payload.Status, payload.CPU, payload.Memory, payload.Disk, payload.Cluster)
 		if err != nil {
 			log.Printf("ADMIN: PATCH vm %s in dc %s - update error: %v", vmId, dcId, err)
 			return c.Status(404).JSON(fiber.Map{"error": err.Error()})

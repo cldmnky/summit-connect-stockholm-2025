@@ -11,7 +11,13 @@ type VM struct {
 	Memory         int        `json:"memory"`
 	Disk           int        `json:"disk"`
 	LastMigratedAt *time.Time `json:"_lastMigratedAt,omitempty"`
+	// Migration tracking
+	PreviousCluster string `json:"previousCluster,omitempty"`
+	MigrationStatus string `json:"migrationStatus,omitempty"` // "migrating", "completed", ""
+	MigrationSource string `json:"migrationSource,omitempty"` // Source cluster for migration
+	MigrationTarget string `json:"migrationTarget,omitempty"` // Target cluster for migration
 	// Kubernetes / KubeVirt fields
+	Cluster   string `json:"cluster,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
 	Phase     string `json:"phase,omitempty"`
 	IP        string `json:"ip,omitempty"`
@@ -26,6 +32,7 @@ type Datacenter struct {
 	Name        string    `json:"name"`
 	Location    string    `json:"location"`
 	Coordinates []float64 `json:"coordinates"`
+	Clusters    []string  `json:"clusters,omitempty"`
 	VMs         []VM      `json:"vms"`
 }
 

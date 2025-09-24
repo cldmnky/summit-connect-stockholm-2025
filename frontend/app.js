@@ -6,6 +6,7 @@ class StockholmDatacentersMap {
         this.markers = [];
         this.markerByDcId = new Map();
         this.migrationAnimations = []; // Track active animations
+        this.migrationLines = new Map(); // Track active migration lines
         this.currentLayer = 'satellite';
         this.layers = {};
         
@@ -25,7 +26,7 @@ class StockholmDatacentersMap {
         this.clearMigrationAnimations();
         
         // periodically refetch data to pick up migrations
-        this.startAutoRefresh(10000); // every 10s
+        this.startAutoRefresh(5000); // every 5s
     }
     
     async loadDatacenters() {
@@ -185,7 +186,8 @@ class StockholmDatacentersMap {
             firstFewVMs.forEach(vm => {
                 const readyIcon = vm.ready === true ? '✓' : vm.ready === false ? '✗' : '?';
                 const nodeInfo = vm.nodeName ? ` @ ${vm.nodeName}` : '';
-                vmSummary += `• ${vm.name} (${vm.status}) ${readyIcon}${nodeInfo}<br/>`;
+                const clusterInfo = vm.cluster ? ` [${vm.cluster}]` : '';
+                vmSummary += `• ${vm.name} (${vm.status}) ${readyIcon}${nodeInfo}${clusterInfo}<br/>`;
             });
             if (datacenter.vms.length > 3) {
                 vmSummary += `• ...and ${datacenter.vms.length - 3} more<br/>`;
@@ -265,6 +267,11 @@ class StockholmDatacentersMap {
             const row = document.createElement('div');
             row.className = 'vm-row';
 
+            // Add migration styling for migrating VMs
+            if (vm.migrationStatus === "migrating" || vm.status === "migrating" || vm.status === "waitingforreceiver") {
+                row.classList.add('migrating');
+            }
+
             // highlight if belongs to focused datacenter
             if (focusDatacenterId && vm.datacenterId === focusDatacenterId) {
                 row.style.background = '#f1f5ff';
@@ -277,15 +284,23 @@ class StockholmDatacentersMap {
             // Build VM status and KubeVirt info - use phase instead of status to avoid duplication
             const vmStatus = vm.phase || vm.status || 'Unknown';
             let kubeVirtInfo = '';
+            if (vm.cluster) kubeVirtInfo += ` • Cluster: ${vm.cluster}`;
             if (vm.namespace) kubeVirtInfo += ` • NS: ${vm.namespace}`;
             if (vm.ip) kubeVirtInfo += ` • IP: ${vm.ip}`;
             if (vm.nodeName) kubeVirtInfo += ` • Node: ${vm.nodeName}`;
             if (vm.ready !== undefined) kubeVirtInfo += ` • Ready: ${vm.ready ? '✓' : '✗'}`;
             if (vm.age) kubeVirtInfo += ` • Age: ${vm.age}`;
             
+            // Add migration indicator to status
+            let statusDisplay = vmStatus;
+            if (vm.migrationStatus === "migrating" || vm.status === "migrating" || vm.status === "waitingforreceiver") {
+                const icon = '🔄';
+                statusDisplay = vm.status === "waitingforreceiver" ? `${icon} Waiting for receiver` : `${icon} Migrating`;
+            }
+            
             meta.innerHTML = `<div>
                     <div class="vm-name">${vm.name}</div>
-                    <div class="vm-sub">${vm.id} • ${vm.datacenterName} • ${vmStatus}${kubeVirtInfo}</div>
+                    <div class="vm-sub">${vm.id} • ${vm.datacenterName} • <span class="vm-status">${statusDisplay}</span>${kubeVirtInfo}</div>
                     <div class="vm-resources">CPU: ${vm.cpu || 'N/A'} • Memory: ${vm.memory || 'N/A'}MB • Disk: ${vm.disk || 'N/A'}GB</div>
                 </div>`;
 
@@ -348,6 +363,58 @@ class StockholmDatacentersMap {
                 (dc.vms || []).forEach(vm => newMap.set(vm.id, dc.id));
             });
 
+            // Detect VMs in migration states
+            const migratingVMs = [];
+            newDCs.forEach(dc => {
+                (dc.vms || []).forEach(vm => {
+                    if (vm.migrationStatus === "migrating" || vm.status === "migrating" || vm.status === "waitingforreceiver") {
+                        migratingVMs.push({ vm, dc });
+                    }
+                });
+            });
+
+            // Show migration notifications for active migrations
+            if (migratingVMs.length > 0) {
+                migratingVMs.forEach(({ vm, dc }) => {
+                    // Check if we have migration source/target information
+                    if (vm.migrationSource && vm.migrationTarget) {
+                        const sourceDc = newDCs.find(d => d.clusters && d.clusters.includes(vm.migrationSource));
+                        const targetDc = newDCs.find(d => d.clusters && d.clusters.includes(vm.migrationTarget));
+                        
+                        if (sourceDc && targetDc) {
+                            this.showMigrationNotification(vm, sourceDc, targetDc);
+                            this.drawMigrationLine(sourceDc, targetDc, vm);
+                            return;
+                        }
+                    }
+                    
+                    // Fallback: determine direction based on migration status
+                    // In most cases during migration, the VM appears in the source datacenter
+                    // until the migration completes
+                    const currentDc = dc;
+                    const otherDc = newDCs.find(d => d.id !== dc.id);
+                    
+                    if (!otherDc) {
+                        // Only one datacenter, show status without direction
+                        console.log(`VM ${vm.name} is ${vm.status} in ${currentDc.name}`);
+                        return;
+                    }
+                    
+                    // For both states, assume current DC is source and other is target
+                    // This is the most common scenario in live migrations
+                    this.showMigrationNotification(vm, currentDc, otherDc);
+                    this.drawMigrationLine(currentDc, otherDc, vm);
+                });
+            }
+
+            // Clean up old migration lines periodically
+            if (migratingVMs.length === 0) {
+                this.cleanupOldMigrationLines();
+            }
+
+            // Clean up migration lines for VMs that are no longer migrating
+            this.cleanupCompletedMigrations(migratingVMs);
+
             // Detect migrations: vmId present in both maps but with different dc id
             const migrations = [];
             newMap.forEach((toDcId, vmId) => {
@@ -360,6 +427,12 @@ class StockholmDatacentersMap {
                         // mark this VM with a migration timestamp so UI can sort by latest migrations
                         try { vm._lastMigratedAt = Date.now(); } catch (e) { /* ignore */ }
                         migrations.push({ vm, fromDc, toDc });
+                        
+                        // Remove migration line for completed migration
+                        this.removeMigrationLineForVM(vm.id);
+                        
+                        // Show completion notification
+                        this.showMigrationNotification(`VM ${vm.name} migrated from ${fromDc.name} to ${toDc.name}`, vm);
                     }
                 }
             });
@@ -487,6 +560,219 @@ class StockholmDatacentersMap {
         }, stepMs);
     }
     
+    showMigrationNotification(vm, fromDatacenter, toDatacenter) {
+        const message = `VM ${vm.name || vm.vmId} is migrating from ${fromDatacenter.name} to ${toDatacenter.name}`;
+        
+        // Create or get the notification container
+        let notificationContainer = document.getElementById('notification-container');
+        if (!notificationContainer) {
+            notificationContainer = document.createElement('div');
+            notificationContainer.id = 'notification-container';
+            notificationContainer.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 10000;
+                pointer-events: none;
+            `;
+            document.body.appendChild(notificationContainer);
+        }
+        
+        // Create notification toast
+        const notification = document.createElement('div');
+        notification.className = 'toast migration';
+        notification.style.cssText = `
+            margin-bottom: 10px;
+            pointer-events: auto;
+            max-width: 350px;
+        `;
+        
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="font-size: 18px;">🔄</div>
+                <div>
+                    <strong>Migration in Progress</strong><br>
+                    <span style="font-size: 0.9em; opacity: 0.9;">${message}</span>
+                </div>
+            </div>
+        `;
+        
+        // Add to container
+        notificationContainer.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateX(0)';
+        }, 50);
+        
+        // Remove after delay
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 5000);
+    }
+    
+    drawMigrationLine(fromDatacenter, toDatacenter, vm) {
+        if (!this.map || !fromDatacenter || !toDatacenter || fromDatacenter.id === toDatacenter.id) {
+            return null;
+        }
+
+        // Create a unique key for this migration line
+        const lineKey = `${fromDatacenter.id}-${toDatacenter.id}-${vm.id}`;
+        
+        // Remove existing line if it exists
+        if (this.migrationLines && this.migrationLines.has(lineKey)) {
+            const existingLine = this.migrationLines.get(lineKey);
+            try {
+                this.map.removeLayer(existingLine.line);
+                if (existingLine.pulseInterval) {
+                    clearInterval(existingLine.pulseInterval);
+                }
+            } catch (e) {
+                console.warn('Error removing existing migration line:', e);
+            }
+        }
+
+        // Initialize migration lines tracking if not exists
+        if (!this.migrationLines) {
+            this.migrationLines = new Map();
+        }
+
+        const fromCoords = [fromDatacenter.coordinates[0], fromDatacenter.coordinates[1]];
+        const toCoords = [toDatacenter.coordinates[0], toDatacenter.coordinates[1]];
+
+        // Create animated migration line
+        const migrationLine = L.polyline([fromCoords, toCoords], {
+            color: '#ff6b35', // Orange color for ongoing migrations
+            weight: 4,
+            opacity: 0.8,
+            dashArray: '10, 10',
+            className: 'migration-line'
+        }).addTo(this.map);
+
+        // Add pulsing animation
+        let opacity = 0.8;
+        let increasing = false;
+        const pulseInterval = setInterval(() => {
+            if (increasing) {
+                opacity += 0.05;
+                if (opacity >= 1.0) {
+                    increasing = false;
+                }
+            } else {
+                opacity -= 0.05;
+                if (opacity <= 0.3) {
+                    increasing = true;
+                }
+            }
+            migrationLine.setStyle({ opacity });
+        }, 100);
+
+        // Store the line and its interval
+        const lineData = {
+            line: migrationLine,
+            pulseInterval: pulseInterval,
+            vm: vm,
+            from: fromDatacenter.id,
+            to: toDatacenter.id,
+            timestamp: Date.now()
+        };
+        
+        this.migrationLines.set(lineKey, lineData);
+
+        console.log(`Added migration line for VM ${vm.name} from ${fromDatacenter.name} to ${toDatacenter.name}`);
+        
+        return lineData;
+    }
+    
+    removeMigrationLine(fromDatacenterId, toDatacenterId, vmId) {
+        if (!this.migrationLines) return;
+        
+        const lineKey = `${fromDatacenterId}-${toDatacenterId}-${vmId}`;
+        const lineData = this.migrationLines.get(lineKey);
+        
+        if (lineData) {
+            try {
+                this.map.removeLayer(lineData.line);
+                if (lineData.pulseInterval) {
+                    clearInterval(lineData.pulseInterval);
+                }
+                this.migrationLines.delete(lineKey);
+                console.log(`Removed migration line for VM ${vmId}`);
+            } catch (e) {
+                console.warn('Error removing migration line:', e);
+            }
+        }
+    }
+    
+    cleanupOldMigrationLines() {
+        if (!this.migrationLines) return;
+        
+        const now = Date.now();
+        const maxAge = 10 * 60 * 1000; // 10 minutes
+        
+        this.migrationLines.forEach((lineData, key) => {
+            if (now - lineData.timestamp > maxAge) {
+                this.removeMigrationLine(lineData.from, lineData.to, lineData.vm.id);
+            }
+        });
+    }
+    
+    cleanupCompletedMigrations(currentMigratingVMs) {
+        if (!this.migrationLines) return;
+        
+        // Get list of currently migrating VM IDs
+        const currentMigratingVMIds = new Set(currentMigratingVMs.map(({ vm }) => vm.id));
+        
+        // Remove migration lines for VMs that are no longer migrating
+        const linesToRemove = [];
+        this.migrationLines.forEach((lineData, key) => {
+            if (!currentMigratingVMIds.has(lineData.vm.id)) {
+                linesToRemove.push({
+                    key,
+                    from: lineData.from,
+                    to: lineData.to,
+                    vmId: lineData.vm.id
+                });
+            }
+        });
+        
+        // Remove the lines
+        linesToRemove.forEach(({ from, to, vmId }) => {
+            this.removeMigrationLine(from, to, vmId);
+            console.log(`Removed migration line for completed migration of VM ${vmId}`);
+        });
+    }
+    
+    removeMigrationLineForVM(vmId) {
+        if (!this.migrationLines) return;
+        
+        // Find all migration lines for this VM
+        const linesToRemove = [];
+        this.migrationLines.forEach((lineData, key) => {
+            if (lineData.vm.id === vmId) {
+                linesToRemove.push({
+                    key,
+                    from: lineData.from,
+                    to: lineData.to,
+                    vmId: vmId
+                });
+            }
+        });
+        
+        // Remove the lines
+        linesToRemove.forEach(({ from, to, vmId: id }) => {
+            this.removeMigrationLine(from, to, id);
+            console.log(`Removed migration line for VM ${id} (migration completed)`);
+        });
+    }
+    
     addVMActivityVisualization(datacenter) {
         // Add pulsing circles to represent VM activity
         const vmCount = datacenter.vms ? datacenter.vms.length : 0;
@@ -548,6 +834,46 @@ class StockholmDatacentersMap {
         centerBtn && centerBtn.addEventListener('click', () => {
             this.centerMap();
         });
+
+        // Add test function to window for demo purposes
+        const self = this;
+        window.testMigrationNotification = function() {
+            const mockVM = { 
+                name: 'testarne', 
+                vmId: 'testarne',
+                id: 'testarne',
+                migrationStatus: 'migrating'
+            };
+            const fromDC = { 
+                name: 'Stockholm Solna DC', 
+                id: 'dc-solna',
+                coordinates: [59.38162465568805, 17.98030981149373]
+            };
+            const toDC = { 
+                name: 'Stockholm Sollentuna DC', 
+                id: 'dc-sollentuna',
+                coordinates: [59.41966666666667, 17.94661111111111]
+            };
+            
+            self.showMigrationNotification(mockVM, fromDC, toDC);
+            self.drawMigrationLine(fromDC, toDC, mockVM);
+            console.log('Migration notification and line test triggered!');
+        };
+
+        window.clearMigrationLines = function() {
+            if (self.migrationLines) {
+                self.migrationLines.forEach((lineData, key) => {
+                    self.removeMigrationLine(lineData.from, lineData.to, lineData.vm.id);
+                });
+            }
+            console.log('All migration lines cleared!');
+        };
+
+        window.testMigrationCompletion = function() {
+            // Simulate migration completion by removing migration line for testarne
+            self.removeMigrationLineForVM('testarne');
+            console.log('Migration completion test: Removed migration lines for VM testarne');
+        };
     }
     
     toggleMapLayer() {

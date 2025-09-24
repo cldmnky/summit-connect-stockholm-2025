@@ -5,6 +5,9 @@ build-errors.log
 
 # Development tools
 
+# kubeconfigs
+.kubeconfigs/
+
 # Artifacts directory
 bin/
 
@@ -45,4 +48,4 @@ go.work
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db
+Thumbs.dbsummit-connect-stockholm-2025
