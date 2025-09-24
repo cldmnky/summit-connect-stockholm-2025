@@ -10,6 +10,7 @@ import (
 
 	bbolt "github.com/etcd-io/bbolt"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 
 	"github.com/cldmnky/summit-connect-stockholm-2025/internal/models"
 )
@@ -111,6 +112,77 @@ func NewDataStore(dbPath string, jsonSeedPath string) (*DataStore, error) {
 // Close closes the BoltDB
 func (ds *DataStore) Close() error {
 	return ds.db.Close()
+}
+
+// InitializeFromVMWatcherConfig creates datacenter structure from VM watcher config (without VMs)
+func (ds *DataStore) InitializeFromVMWatcherConfig(configPath string) error {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
+	// Define a temporary structure to read the VM watcher config
+	type WatcherDatacenter struct {
+		ID          string    `yaml:"id"`
+		Name        string    `yaml:"name"`
+		Location    string    `yaml:"location"`
+		Coordinates []float64 `yaml:"coordinates"`
+		Clusters    []struct {
+			Name       string `yaml:"name"`
+			Kubeconfig string `yaml:"kubeconfig"`
+		} `yaml:"clusters"`
+	}
+
+	type WatcherConfig struct {
+		Datacenters []WatcherDatacenter `yaml:"datacenters"`
+	}
+
+	// Read the VM watcher config file
+	file, err := os.Open(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to open config file %s: %w", configPath, err)
+	}
+	defer file.Close()
+
+	var watcherConfig WatcherConfig
+	decoder := yaml.NewDecoder(file)
+	if err := decoder.Decode(&watcherConfig); err != nil {
+		return fmt.Errorf("failed to decode config file %s: %w", configPath, err)
+	}
+
+	// Convert to DatacenterCollection (without VMs - they'll be populated by the watcher)
+	var datacenters []models.Datacenter
+	for _, wdc := range watcherConfig.Datacenters {
+		var clusterNames []string
+		for _, cluster := range wdc.Clusters {
+			clusterNames = append(clusterNames, cluster.Name)
+		}
+
+		datacenter := models.Datacenter{
+			ID:          wdc.ID,
+			Name:        wdc.Name,
+			Location:    wdc.Location,
+			Coordinates: wdc.Coordinates,
+			Clusters:    clusterNames,
+			VMs:         []models.VM{}, // Empty - will be populated by VM watcher
+		}
+		datacenters = append(datacenters, datacenter)
+	}
+
+	ds.data = &models.DatacenterCollection{
+		Datacenters: datacenters,
+	}
+
+	// Persist the empty datacenter structure
+	buf, err := json.Marshal(ds.data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal datacenter structure: %w", err)
+	}
+
+	if err := ds.writeToDB(buf); err != nil {
+		return fmt.Errorf("failed to persist datacenter structure: %w", err)
+	}
+
+	fmt.Printf("[DataStore] initialized from VM watcher config: %s with %d datacenters\n", configPath, len(datacenters))
+	return nil
 }
 
 // loadFromJSONFile reads a JSON file and sets ds.data (used for seeding)
@@ -256,8 +328,8 @@ func (ds *DataStore) UpdateDatacenter(id string, name *string, location *string,
 	return nil, fmt.Errorf("datacenter %s not found", id)
 }
 
-// UpdateVM updates fields of a VM in a datacenter
-func (ds *DataStore) UpdateVM(dcID, vmID string, name *string, status *string, cpu *int, memory *int, disk *int) (*models.VM, error) {
+// UpdateVM updates fields of a VM in a datacenter (legacy method for backward compatibility)
+func (ds *DataStore) UpdateVM(dcID, vmID string, name *string, status *string, cpu *int, memory *int, disk *int, cluster *string) (*models.VM, error) {
 	start := time.Now()
 	fmt.Printf("[DataStore] UpdateVM entry dc=%s vm=%s\n", dcID, vmID)
 	ds.mu.Lock()
@@ -281,6 +353,9 @@ func (ds *DataStore) UpdateVM(dcID, vmID string, name *string, status *string, c
 					if disk != nil {
 						vm.Disk = *disk
 					}
+					if cluster != nil {
+						vm.Cluster = *cluster
+					}
 					copy := *vm
 					// marshal and write
 					buf, err := json.Marshal(ds.data)
@@ -303,6 +378,55 @@ func (ds *DataStore) UpdateVM(dcID, vmID string, name *string, status *string, c
 	}
 	ds.mu.Unlock()
 	fmt.Printf("[DataStore] UpdateVM exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+	return nil, fmt.Errorf("datacenter %s not found", dcID)
+}
+
+// UpdateVMComplete updates all fields of a VM in a datacenter with the complete VM model
+func (ds *DataStore) UpdateVMComplete(dcID, vmID string, updatedVM *models.VM) (*models.VM, error) {
+	start := time.Now()
+	fmt.Printf("[DataStore] UpdateVMComplete entry dc=%s vm=%s\n", dcID, vmID)
+	ds.mu.Lock()
+	for i := range ds.data.Datacenters {
+		if ds.data.Datacenters[i].ID == dcID {
+			for j := range ds.data.Datacenters[i].VMs {
+				if ds.data.Datacenters[i].VMs[j].ID == vmID {
+					// Update all fields from the provided VM model
+					vm := &ds.data.Datacenters[i].VMs[j]
+					vm.Name = updatedVM.Name
+					vm.Status = updatedVM.Status
+					vm.CPU = updatedVM.CPU
+					vm.Memory = updatedVM.Memory
+					vm.Disk = updatedVM.Disk
+					vm.Cluster = updatedVM.Cluster
+					vm.Namespace = updatedVM.Namespace
+					vm.Phase = updatedVM.Phase
+					vm.IP = updatedVM.IP
+					vm.NodeName = updatedVM.NodeName
+					vm.Ready = updatedVM.Ready
+					vm.Age = updatedVM.Age
+
+					copy := *vm
+					// marshal and write
+					buf, err := json.Marshal(ds.data)
+					ds.mu.Unlock()
+					if err != nil {
+						fmt.Printf("[DataStore] UpdateVMComplete marshal error: %v\n", err)
+					} else {
+						if err := ds.writeToDB(buf); err != nil {
+							fmt.Printf("[DataStore] UpdateVMComplete writeToDB error: %v\n", err)
+						}
+					}
+					fmt.Printf("[DataStore] UpdateVMComplete exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+					return &copy, nil
+				}
+			}
+			ds.mu.Unlock()
+			fmt.Printf("[DataStore] UpdateVMComplete exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+			return nil, fmt.Errorf("vm %s not found in datacenter %s", vmID, dcID)
+		}
+	}
+	ds.mu.Unlock()
+	fmt.Printf("[DataStore] UpdateVMComplete exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
 	return nil, fmt.Errorf("datacenter %s not found", dcID)
 }
 

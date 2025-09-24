@@ -9,9 +9,9 @@ PID_DIR := .pids
 help:
 	@echo "Makefile targets:"
 	@echo "  build          # build the Go application"
-	@echo "  start          # start the backend server in background"
+	@echo "  start          # start the backend server in background (with VM watcher)"
 	@echo "  stop           # stop background processes"
-	@echo "  dev            # start server with hot reloading (foreground)"
+	@echo "  dev            # start server with hot reloading and VM watcher (foreground)"
 	@echo "  status         # show running processes"
 	@echo "  logs           # tail server logs"
 	@echo "  clean          # remove logs and pid files"
@@ -29,7 +29,7 @@ build:
 start: build
 	@mkdir -p $(LOG_DIR) $(PID_DIR)
 	@echo "Starting backend server (background)..."
-	@nohup ./summit-connect serve backend --port 3001 --config ./config/datacenters.yaml > $(LOG_DIR)/server.log 2>&1 & echo $$! > $(PID_DIR)/server.pid
+	@nohup ./summit-connect serve backend --port 3001 --config ./config/datacenters.yaml --watch-vms > $(LOG_DIR)/server.log 2>&1 & echo $$! > $(PID_DIR)/server.pid
 	@sleep 1
 	@echo "Started. Server PID: `cat $(PID_DIR)/server.pid 2>/dev/null || echo -`"
 	@echo "Logs: $(LOG_DIR)/server.log"
@@ -51,7 +51,7 @@ dev:
 		echo 'tmp_dir = "tmp"' >> .air.toml; \
 		echo '' >> .air.toml; \
 		echo '[build]' >> .air.toml; \
-		echo '  args_bin = ["serve", "backend", "--port", "3001", "--config", "./config/datacenters.yaml"]' >> .air.toml; \
+		echo '  args_bin = ["serve", "backend", "--port", "3001", "--config", "./config/datacenters.yaml", "--watch-vms"]' >> .air.toml; \
 		echo '  bin = "./tmp/main"' >> .air.toml; \
 		echo '  cmd = "go build -o ./tmp/main ."' >> .air.toml; \
 		echo '  delay = 1000' >> .air.toml; \
