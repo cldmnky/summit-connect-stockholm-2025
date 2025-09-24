@@ -4,8 +4,8 @@ datacenters:
     location: "Sollentuna, Stockholm"
     coordinates: [59.41966666666667, 17.94661111111111]
     clusters:
-    - name: vulcan
-      kubeconfig: ../.kubeconfigs/vulcan.yaml # Relative to the config file
+    - name: coruscant
+      kubeconfig: ../.kubeconfigs/coruscant.yaml # Relative to the config file
     #vms:
     #  - id: planet-01
     #    name: planet-01
@@ -48,8 +48,8 @@ datacenters:
     location: "Järvastaden, Solna"
     coordinates: [59.38162465568805, 17.98030981149373]
     clusters:
-    - name: borg
-      kubeconfig: ../.kubeconfigs/borg.yaml # Relative to the config file
+    - name: vulcan
+      kubeconfig: ../.kubeconfigs/vulcan.yaml # Relative to the config file
     #vms:
     #  - id: rhel9-silver-giraffe-21
     #    name: rhel9-silver-giraffe-21
