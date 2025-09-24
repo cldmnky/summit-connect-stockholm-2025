@@ -1,0 +1,43 @@
+# Build outputs
+summit-connect
+tmp/
+build-errors.log
+
+# Development tools
+.air.toml
+
+# Logs and PIDs
+logs/
+.pids/
+
+# Node.js (legacy)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

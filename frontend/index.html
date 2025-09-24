@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stockholm Datacenters Map</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <header class="has-text-centered">
+                <h1 class="title is-3">Stockholm County Datacenters</h1>
+                <p class="subtitle is-6">Interactive map showing datacenter locations and VM distribution</p>
+            </header>
+
+            <main>
+                <div class="columns">
+                    <div class="column is-full">
+                        <div class="map-container box">
+                            <div id="map"></div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-symbol datacenter"></div>
+                        <span>Datacenter</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-symbol vm-indicator"></div>
+                        <span>VM Activity</span>
+                    </div>
+                </div>
+                <div class="map-controls">
+                    <button id="toggle-satellite" class="map-control-btn">Street View</button>
+                    <button id="center-map" class="map-control-btn">Center Map</button>
+                </div>
+
+                <!-- Migration controls placed below the map -->
+                <div class="migration-controls">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <button id="trigger-migrate" class="map-control-btn button">Trigger Migration</button>
+                        <button id="demo-migrate" class="map-control-btn button">Start Demo Migrations</button>
+                        <label class="switch is-small is-rounded" title="Toggle live migrations" style="margin-left:8px; display:flex; align-items:center;">
+                            <input type="checkbox" id="live-migrations-toggle">
+                            <span class="check"></span>
+                        </label>
+                        <span style="font-size:0.95rem; white-space:nowrap;">Live migrations</span>
+                    </div>
+                </div>
+                            <!-- Overlay panels -->
+                            <div class="overlay overlay-bottom-left" id="global-vm-list">
+                                <div class="box vm-list">
+                                    <h3 class="title is-6">Active VMs</h3>
+                                    <div class="vm-list-rows" id="vm-list-rows">
+                                        <!-- VM rows populated by app.js -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="overlay overlay-top-right" id="stats-panel">
+                                <div class="box stats">
+                                    <div class="columns is-mobile">
+                                        <div class="column has-text-centered">
+                                            <span class="stat-value" id="total-vms">0</span>
+                                            <div class="stat-label">Total VMs</div>
+                                        </div>
+                                        <div class="column has-text-centered">
+                                            <span class="stat-value" id="active-datacenters">2</span>
+                                            <div class="stat-label">Active Datacenters</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </section>
+    
+    <div class="tooltip" id="tooltip"></div>
+    <div id="toast" class="toast" aria-live="polite" role="status" style="display:none"></div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
