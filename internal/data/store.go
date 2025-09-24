@@ -1,0 +1,447 @@
+package data
+
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+
+	bbolt "github.com/etcd-io/bbolt"
+
+	"github.com/cldmnky/summit-connect-stockholm-2025/internal/models"
+)
+
+const (
+	defaultBucket = "datacenters"
+	defaultKey    = "collection"
+)
+
+// DataStore handles data operations and persists to BoltDB
+type DataStore struct {
+	mu   sync.RWMutex
+	data *models.DatacenterCollection
+	db   *bbolt.DB
+}
+
+// NewDataStore opens/creates the BoltDB file at dbPath and loads data
+// If the DB is empty and a jsonSeedPath is provided and exists it will be used to seed data.
+func NewDataStore(dbPath string, jsonSeedPath string) (*DataStore, error) {
+	// ensure parent dir exists
+	if dbPath == "" {
+		dbPath = "/tmp/summit-connect.db"
+	}
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create db dir: %v", err)
+	}
+
+	db, err := bbolt.Open(dbPath, 0600, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open bolt db %s: %v", dbPath, err)
+	}
+
+	ds := &DataStore{data: &models.DatacenterCollection{}, db: db}
+
+	// Create bucket if not exists and try to load existing collection
+	err = ds.db.Update(func(tx *bbolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte(defaultBucket))
+		return err
+	})
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to create bucket: %v", err)
+	}
+
+	// Try to load from DB
+	if err := ds.loadFromDB(); err != nil {
+		// If DB empty and we have a json seed file, load from it and persist
+		if jsonSeedPath != "" {
+			if _, statErr := os.Stat(jsonSeedPath); statErr == nil {
+				if err := ds.loadFromJSONFile(jsonSeedPath); err == nil {
+					// persist initial data to DB
+					if perr := ds.saveToDB(); perr != nil {
+						return nil, perr
+					}
+				}
+			}
+		}
+	}
+
+	return ds, nil
+}
+
+// Close closes the BoltDB
+func (ds *DataStore) Close() error {
+	return ds.db.Close()
+}
+
+// loadFromJSONFile reads a JSON file and sets ds.data (used for seeding)
+func (ds *DataStore) loadFromJSONFile(filename string) error {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+	var col models.DatacenterCollection
+	if err := json.Unmarshal(b, &col); err != nil {
+		return err
+	}
+	ds.data = &col
+	return nil
+}
+
+// loadFromDB loads the collection from BoltDB into memory
+func (ds *DataStore) loadFromDB() error {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
+	return ds.db.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(defaultBucket))
+		if b == nil {
+			return fmt.Errorf("bucket %s not found", defaultBucket)
+		}
+		v := b.Get([]byte(defaultKey))
+		if v == nil {
+			// no data yet
+			ds.data = &models.DatacenterCollection{}
+			return fmt.Errorf("no data in db")
+		}
+		var col models.DatacenterCollection
+		if err := json.Unmarshal(v, &col); err != nil {
+			return err
+		}
+		ds.data = &col
+		return nil
+	})
+}
+
+// saveToDB persists the in-memory collection to BoltDB
+func (ds *DataStore) saveToDB() error {
+	// Marshal under a read-lock to capture a consistent snapshot.
+	ds.mu.RLock()
+	buf, err := json.Marshal(ds.data)
+	ds.mu.RUnlock()
+	if err != nil {
+		return err
+	}
+	return ds.writeToDB(buf)
+}
+
+// writeToDB writes the provided marshaled buffer into the BoltDB
+// This method does NOT attempt to acquire ds.mu; callers must ensure
+// they are not holding locks that would deadlock with callers that
+// call this function. It's safe to call from goroutines without
+// holding the DataStore mutex.
+func (ds *DataStore) writeToDB(buf []byte) error {
+	start := time.Now()
+	fmt.Printf("[DataStore] writeToDB start size=%d\n", len(buf))
+	err := ds.db.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(defaultBucket))
+		if b == nil {
+			var err error
+			b, err = tx.CreateBucket([]byte(defaultBucket))
+			if err != nil {
+				return err
+			}
+		}
+		return b.Put([]byte(defaultKey), buf)
+	})
+	dur := time.Since(start)
+	if err != nil {
+		fmt.Printf("[DataStore] writeToDB error: %v duration=%s\n", err, dur)
+	} else {
+		fmt.Printf("[DataStore] writeToDB ok duration=%s\n", dur)
+	}
+	return err
+}
+
+// GetDatacenters returns all datacenters (deep copy)
+func (ds *DataStore) GetDatacenters() *models.DatacenterCollection {
+	ds.mu.RLock()
+	defer ds.mu.RUnlock()
+
+	jsonData, _ := json.Marshal(ds.data)
+	var copy models.DatacenterCollection
+	json.Unmarshal(jsonData, &copy)
+	return &copy
+}
+
+// UpdateDatacenter updates fields of a datacenter (coordinates, name, location)
+func (ds *DataStore) UpdateDatacenter(id string, name *string, location *string, coordinates *[]float64) (*models.Datacenter, error) {
+	start := time.Now()
+	fmt.Printf("[DataStore] UpdateDatacenter entry id=%s\n", id)
+	ds.mu.Lock()
+	// perform modification under lock, marshal snapshot, then unlock and write to DB
+	for i := range ds.data.Datacenters {
+		if ds.data.Datacenters[i].ID == id {
+			if name != nil {
+				ds.data.Datacenters[i].Name = *name
+			}
+			if location != nil {
+				ds.data.Datacenters[i].Location = *location
+			}
+			if coordinates != nil {
+				ds.data.Datacenters[i].Coordinates = *coordinates
+			}
+			// make a copy for return
+			dc := ds.data.Datacenters[i]
+			// marshal snapshot while still holding lock
+			buf, err := json.Marshal(ds.data)
+			ds.mu.Unlock()
+			if err != nil {
+				fmt.Printf("[DataStore] UpdateDatacenter marshal error: %v\n", err)
+			} else {
+				if err := ds.writeToDB(buf); err != nil {
+					fmt.Printf("[DataStore] UpdateDatacenter writeToDB error: %v\n", err)
+				}
+			}
+			fmt.Printf("[DataStore] UpdateDatacenter exit id=%s duration=%s\n", id, time.Since(start))
+			return &dc, nil
+		}
+	}
+	ds.mu.Unlock()
+	fmt.Printf("[DataStore] UpdateDatacenter exit id=%s duration=%s\n", id, time.Since(start))
+	return nil, fmt.Errorf("datacenter %s not found", id)
+}
+
+// UpdateVM updates fields of a VM in a datacenter
+func (ds *DataStore) UpdateVM(dcID, vmID string, name *string, status *string, cpu *int, memory *int, disk *int) (*models.VM, error) {
+	start := time.Now()
+	fmt.Printf("[DataStore] UpdateVM entry dc=%s vm=%s\n", dcID, vmID)
+	ds.mu.Lock()
+	for i := range ds.data.Datacenters {
+		if ds.data.Datacenters[i].ID == dcID {
+			for j := range ds.data.Datacenters[i].VMs {
+				if ds.data.Datacenters[i].VMs[j].ID == vmID {
+					vm := &ds.data.Datacenters[i].VMs[j]
+					if name != nil {
+						vm.Name = *name
+					}
+					if status != nil {
+						vm.Status = *status
+					}
+					if cpu != nil {
+						vm.CPU = *cpu
+					}
+					if memory != nil {
+						vm.Memory = *memory
+					}
+					if disk != nil {
+						vm.Disk = *disk
+					}
+					copy := *vm
+					// marshal and write
+					buf, err := json.Marshal(ds.data)
+					ds.mu.Unlock()
+					if err != nil {
+						fmt.Printf("[DataStore] UpdateVM marshal error: %v\n", err)
+					} else {
+						if err := ds.writeToDB(buf); err != nil {
+							fmt.Printf("[DataStore] UpdateVM writeToDB error: %v\n", err)
+						}
+					}
+					fmt.Printf("[DataStore] UpdateVM exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+					return &copy, nil
+				}
+			}
+			ds.mu.Unlock()
+			fmt.Printf("[DataStore] UpdateVM exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+			return nil, fmt.Errorf("vm %s not found in datacenter %s", vmID, dcID)
+		}
+	}
+	ds.mu.Unlock()
+	fmt.Printf("[DataStore] UpdateVM exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+	return nil, fmt.Errorf("datacenter %s not found", dcID)
+}
+
+// AddVM adds a VM to a datacenter
+func (ds *DataStore) AddVM(dcID string, vm models.VM) (*models.VM, error) {
+	start := time.Now()
+	fmt.Printf("[DataStore] AddVM entry dc=%s vm=%s\n", dcID, vm.ID)
+	ds.mu.Lock()
+	for i := range ds.data.Datacenters {
+		if ds.data.Datacenters[i].ID == dcID {
+			ds.data.Datacenters[i].VMs = append(ds.data.Datacenters[i].VMs, vm)
+			copy := vm
+			buf, err := json.Marshal(ds.data)
+			ds.mu.Unlock()
+			if err != nil {
+				fmt.Printf("[DataStore] AddVM marshal error: %v\n", err)
+			} else {
+				if err := ds.writeToDB(buf); err != nil {
+					fmt.Printf("[DataStore] AddVM writeToDB error: %v\n", err)
+				}
+			}
+			fmt.Printf("[DataStore] AddVM exit dc=%s vm=%s duration=%s\n", dcID, vm.ID, time.Since(start))
+			return &copy, nil
+		}
+	}
+	ds.mu.Unlock()
+	fmt.Printf("[DataStore] AddVM exit dc=%s vm=%s duration=%s\n", dcID, vm.ID, time.Since(start))
+	return nil, fmt.Errorf("datacenter %s not found", dcID)
+}
+
+// RemoveVM removes a VM from a datacenter
+func (ds *DataStore) RemoveVM(dcID, vmID string) error {
+	start := time.Now()
+	fmt.Printf("[DataStore] RemoveVM entry dc=%s vm=%s\n", dcID, vmID)
+	ds.mu.Lock()
+	for i := range ds.data.Datacenters {
+		if ds.data.Datacenters[i].ID == dcID {
+			for j := range ds.data.Datacenters[i].VMs {
+				if ds.data.Datacenters[i].VMs[j].ID == vmID {
+					ds.data.Datacenters[i].VMs = append(ds.data.Datacenters[i].VMs[:j], ds.data.Datacenters[i].VMs[j+1:]...)
+					buf, err := json.Marshal(ds.data)
+					ds.mu.Unlock()
+					if err != nil {
+						fmt.Printf("[DataStore] RemoveVM marshal error: %v\n", err)
+					} else {
+						if err := ds.writeToDB(buf); err != nil {
+							fmt.Printf("[DataStore] RemoveVM writeToDB error: %v\n", err)
+						}
+					}
+					fmt.Printf("[DataStore] RemoveVM exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+					return nil
+				}
+			}
+			ds.mu.Unlock()
+			fmt.Printf("[DataStore] RemoveVM exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+			return fmt.Errorf("vm %s not found in datacenter %s", vmID, dcID)
+		}
+	}
+	ds.mu.Unlock()
+	fmt.Printf("[DataStore] RemoveVM exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+	return fmt.Errorf("datacenter %s not found", dcID)
+}
+
+// MigrateVM migrates a VM from one datacenter to another
+func (ds *DataStore) MigrateVM(vmID, fromDC, toDC string) (*models.VM, error) {
+	start := time.Now()
+	fmt.Printf("[DataStore] MigrateVM entry vm=%s from=%s to=%s\n", vmID, fromDC, toDC)
+	ds.mu.Lock()
+	var sourceVM *models.VM
+	var targetDCIndex int = -1
+
+	for i, dc := range ds.data.Datacenters {
+		if dc.ID == fromDC {
+			for j, vm := range dc.VMs {
+				if vm.ID == vmID {
+					// copy of vm
+					tmp := vm
+					sourceVM = &tmp
+					ds.data.Datacenters[i].VMs = append(dc.VMs[:j], dc.VMs[j+1:]...)
+					break
+				}
+			}
+		}
+		if dc.ID == toDC {
+			targetDCIndex = i
+		}
+	}
+
+	if sourceVM == nil {
+		ds.mu.Unlock()
+		fmt.Printf("[DataStore] MigrateVM exit vm=%s duration=%s\n", vmID, time.Since(start))
+		return nil, fmt.Errorf("VM %s not found in datacenter %s", vmID, fromDC)
+	}
+
+	if targetDCIndex == -1 {
+		ds.mu.Unlock()
+		fmt.Printf("[DataStore] MigrateVM exit vm=%s duration=%s\n", vmID, time.Since(start))
+		return nil, fmt.Errorf("target datacenter %s not found", toDC)
+	}
+
+	now := time.Now()
+	sourceVM.LastMigratedAt = &now
+
+	ds.data.Datacenters[targetDCIndex].VMs = append(ds.data.Datacenters[targetDCIndex].VMs, *sourceVM)
+
+	buf, err := json.Marshal(ds.data)
+	ds.mu.Unlock()
+	if err != nil {
+		fmt.Printf("[DataStore] MigrateVM marshal error: %v\n", err)
+	} else {
+		if err := ds.writeToDB(buf); err != nil {
+			fmt.Printf("[DataStore] MigrateVM writeToDB error: %v\n", err)
+		}
+	}
+	fmt.Printf("[DataStore] MigrateVM exit vm=%s duration=%s\n", vmID, time.Since(start))
+	return sourceVM, nil
+}
+
+// InitializeWithSampleData creates sample data if no data exists (keeps previous sample)
+func (ds *DataStore) InitializeWithSampleData() {
+	ds.mu.Lock()
+	ds.data = &models.DatacenterCollection{
+		Datacenters: []models.Datacenter{
+			{
+				ID:          "dc-stockholm-north",
+				Name:        "Stockholm North DC",
+				Location:    "Kista, Stockholm",
+				Coordinates: []float64{59.41966666666667, 17.94661111111111},
+				VMs: []models.VM{
+					{
+						ID:     "vm-001",
+						Name:   "web-server-01",
+						Status: "running",
+						CPU:    4,
+						Memory: 8192,
+						Disk:   100,
+					},
+					{
+						ID:     "vm-002",
+						Name:   "database-01",
+						Status: "running",
+						CPU:    8,
+						Memory: 16384,
+						Disk:   500,
+					},
+					{
+						ID:     "vm-003",
+						Name:   "cache-01",
+						Status: "running",
+						CPU:    2,
+						Memory: 4096,
+						Disk:   50,
+					},
+				},
+			},
+			{
+				ID:          "dc-solna",
+				Name:        "Stockholm Solna DC",
+				Location:    "Järvastaden, Solna",
+				Coordinates: []float64{59.38162465568805, 17.98030981149373},
+				VMs: []models.VM{
+					{
+						ID:     "vm-004",
+						Name:   "web-server-02",
+						Status: "running",
+						CPU:    4,
+						Memory: 8192,
+						Disk:   100,
+					},
+					{
+						ID:     "vm-005",
+						Name:   "backup-01",
+						Status: "stopped",
+						CPU:    2,
+						Memory: 4096,
+						Disk:   1000,
+					},
+				},
+			},
+		},
+	}
+	// marshal and persist sample data
+	buf, err := json.Marshal(ds.data)
+	ds.mu.Unlock()
+	if err == nil {
+		_ = ds.writeToDB(buf)
+	} else {
+		fmt.Printf("[DataStore] InitializeWithSampleData marshal error: %v\n", err)
+	}
+}
