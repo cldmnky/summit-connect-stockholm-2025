@@ -838,3 +838,76 @@ main {
         stroke-dashoffset: 20;
     }
 }
+
+/* Force-directed graph styles */
+.force-graph {
+    pointer-events: none;
+}
+
+/* SVG overlay styles */
+.leaflet-svg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: auto;
+    z-index: 200; /* Above other map elements but below controls */
+}
+
+.force-graph .vm-node {
+    fill: #4ecdc4;
+    stroke: #fff;
+    stroke-width: 2px;
+    cursor: pointer;
+    pointer-events: all;
+}
+
+.force-graph .vm-node.migrating {
+    fill: #ff6b35;
+    stroke: #ff6b35;
+    stroke-width: 3px;
+    animation: vm-pulse 1.5s ease-in-out infinite alternate;
+}
+
+.force-graph .vm-node.ready {
+    fill: #2ecc71;
+}
+
+.force-graph .vm-node.not-ready {
+    fill: #e74c3c;
+}
+
+.force-graph .datacenter-node {
+    fill: #ff6b6b;
+    stroke: #fff;
+    stroke-width: 3px;
+}
+
+.force-graph .vm-link {
+    stroke: #999;
+    stroke-opacity: 0.3;
+    stroke-width: 1px;
+}
+
+.force-graph .vm-label {
+    font-family: 'Red Hat Text', Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    fill: #222;
+    stroke: #fff;
+    stroke-width: 3px;
+    paint-order: stroke fill;
+    text-anchor: middle;
+    pointer-events: none;
+    user-select: none;
+}
+
+@keyframes vm-pulse {
+    0% {
+        r: 6;
+        fill-opacity: 1;
+    }
+    100% {
+        r: 8;
+        fill-opacity: 0.7;
+    }
+}
