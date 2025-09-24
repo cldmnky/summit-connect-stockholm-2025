@@ -130,28 +130,41 @@ class StockholmDatacentersMap {
     }
     
     createDatacenterMarker(datacenter) {
-        // Create custom icon
+        // Create custom icon with label positioned to the right of the marker
         const datacenterIcon = L.divIcon({
             className: 'datacenter-marker',
             html: `
-                <div style="
-                    width: 24px; 
-                    height: 24px; 
-                    background: #ff6b6b; 
-                    border: 3px solid #fff; 
-                    border-radius: 50%;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 10px;
-                    font-weight: bold;
-                    color: white;
-                ">${datacenter.id}</div>
+                <div class="datacenter-marker-container">
+                    <div class="datacenter-point" style="
+                        width: 16px; 
+                        height: 16px; 
+                        background: #ff6b6b; 
+                        border: 3px solid #fff; 
+                        border-radius: 50%;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                    "></div>
+                    <div class="datacenter-label" style="
+                        position: absolute;
+                        left: 25px;
+                        top: -8px;
+                        background: rgba(21, 21, 21, 0.9);
+                        color: white;
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        font-size: 12px;
+                        font-weight: 600;
+                        white-space: nowrap;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                        font-family: 'Red Hat Text', Arial, sans-serif;
+                    ">${datacenter.name}</div>
+                </div>
             `,
-            iconSize: [30, 30],
-            iconAnchor: [15, 15],
-            popupAnchor: [0, -15]
+            iconSize: [200, 30],
+            iconAnchor: [10, 10],
+            popupAnchor: [0, -10]
         });
         
         // Create marker
@@ -162,14 +175,33 @@ class StockholmDatacentersMap {
         // Add popup with datacenter information
         const vmCount = datacenter.vms ? datacenter.vms.length : 0;
         const runningVMs = datacenter.vms ? datacenter.vms.filter(vm => vm.status === 'running').length : 0;
+        const readyVMs = datacenter.vms ? datacenter.vms.filter(vm => vm.ready === true).length : 0;
+        
+        // Generate VM summary for popup
+        let vmSummary = '';
+        if (datacenter.vms && datacenter.vms.length > 0) {
+            const firstFewVMs = datacenter.vms.slice(0, 3);
+            vmSummary = '<div style="margin-top: 8px; font-size: 11px; color: #666;"><strong>VMs:</strong><br/>';
+            firstFewVMs.forEach(vm => {
+                const readyIcon = vm.ready === true ? '✓' : vm.ready === false ? '✗' : '?';
+                const nodeInfo = vm.nodeName ? ` @ ${vm.nodeName}` : '';
+                vmSummary += `• ${vm.name} (${vm.status}) ${readyIcon}${nodeInfo}<br/>`;
+            });
+            if (datacenter.vms.length > 3) {
+                vmSummary += `• ...and ${datacenter.vms.length - 3} more<br/>`;
+            }
+            vmSummary += '</div>';
+        }
+        
         const popupContent = `
-            <div style="min-width: 200px;">
+            <div style="min-width: 220px;">
                 <h3 style="margin: 0 0 10px 0; color: #333;">${datacenter.name}</h3>
                 <div style="line-height: 1.6;">
                     <strong>📍 Location:</strong> ${datacenter.location}<br/>
-                    <strong>💻 VMs:</strong> ${vmCount} (${runningVMs} running)<br/>
+                    <strong>💻 VMs:</strong> ${vmCount} (${runningVMs} running, ${readyVMs} ready)<br/>
                     <strong>⚡ Status:</strong> <span style="color: #28a745; font-weight: bold;">ACTIVE</span><br/>
                 </div>
+                ${vmSummary}
                 <button onclick="app.showDatacenterDetails('${datacenter.id}')" 
                         style="margin-top: 10px; padding: 5px 10px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">
                     View Details
@@ -241,9 +273,20 @@ class StockholmDatacentersMap {
 
             const meta = document.createElement('div');
             meta.className = 'vm-meta';
+            
+            // Build VM status and KubeVirt info - use phase instead of status to avoid duplication
+            const vmStatus = vm.phase || vm.status || 'Unknown';
+            let kubeVirtInfo = '';
+            if (vm.namespace) kubeVirtInfo += ` • NS: ${vm.namespace}`;
+            if (vm.ip) kubeVirtInfo += ` • IP: ${vm.ip}`;
+            if (vm.nodeName) kubeVirtInfo += ` • Node: ${vm.nodeName}`;
+            if (vm.ready !== undefined) kubeVirtInfo += ` • Ready: ${vm.ready ? '✓' : '✗'}`;
+            if (vm.age) kubeVirtInfo += ` • Age: ${vm.age}`;
+            
             meta.innerHTML = `<div>
                     <div class="vm-name">${vm.name}</div>
-                    <div class="vm-sub">${vm.id} • ${vm.datacenterName} • ${vm.status}</div>
+                    <div class="vm-sub">${vm.id} • ${vm.datacenterName} • ${vmStatus}${kubeVirtInfo}</div>
+                    <div class="vm-resources">CPU: ${vm.cpu || 'N/A'} • Memory: ${vm.memory || 'N/A'}MB • Disk: ${vm.disk || 'N/A'}GB</div>
                 </div>`;
 
             const actions = document.createElement('div');

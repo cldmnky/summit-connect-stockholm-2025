@@ -11,6 +11,13 @@ type VM struct {
 	Memory         int        `json:"memory"`
 	Disk           int        `json:"disk"`
 	LastMigratedAt *time.Time `json:"_lastMigratedAt,omitempty"`
+	// Kubernetes / KubeVirt fields
+	Namespace string `json:"namespace,omitempty"`
+	Phase     string `json:"phase,omitempty"`
+	IP        string `json:"ip,omitempty"`
+	NodeName  string `json:"nodeName,omitempty"`
+	Ready     bool   `json:"ready,omitempty"`
+	Age       string `json:"age,omitempty"`
 }
 
 // Datacenter represents a datacenter with its VMs

@@ -4,8 +4,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/cldmnky/summit-connect-stockholm-2025/internal/server"
 	"github.com/spf13/cobra"
+
+	"github.com/cldmnky/summit-connect-stockholm-2025/internal/server"
 )
 
 var serveCmd = &cobra.Command{
@@ -35,12 +36,19 @@ Examples:
 			}
 			// set DB path from flag
 			dbPath, _ := cmd.Flags().GetString("db")
+			// config path (optional) for viper seeding
+			configPath, _ := cmd.Flags().GetString("config")
 			if dbPath != "" {
 				os.Setenv("SUMMIT_DB", dbPath)
 			}
 			log.Printf("Starting backend API server on port %d", port)
 			// initialize datastore explicitly with the provided dbPath and optional seed path
-			seedPath := "frontend/datacenters.json"
+			// If a config path was provided use that (Viper will handle it). Otherwise leave seedPath empty
+			// so the DataStore will try viper's default lookup locations (including ./config)
+			seedPath := ""
+			if configPath != "" {
+				seedPath = configPath
+			}
 			if err := server.InitDataStore(dbPath, seedPath); err != nil {
 				log.Fatalf("failed to init datastore: %v", err)
 			}
@@ -55,4 +63,5 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 	serveCmd.Flags().IntP("port", "p", 0, "Port to serve on (default: 3001)")
 	serveCmd.Flags().StringP("db", "d", "/tmp/summit-connect.db", "Path to BoltDB file to use for persistence")
+	serveCmd.Flags().StringP("config", "c", "", "Optional config file (yaml/json/env) used to seed the DB via viper")
 }
