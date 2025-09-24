@@ -4,12 +4,17 @@ tmp/
 build-errors.log
 
 # Development tools
-.air.toml
+
+# Artifacts directory
+bin/
 
 # Logs and PIDs
 logs/
 .pids/
 
+
+# Generic log files
+*.log
 # Node.js (legacy)
 node_modules/
 npm-debug.log*
