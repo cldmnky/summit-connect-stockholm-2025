@@ -3,7 +3,7 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = ["serve", "backend", "--port", "3001"]
+  args_bin = ["serve", "backend", "--port", "3001", "--config", "./config/datacenters.yaml", "--watch-vms"]
   bin = "./tmp/main"
   cmd = "go build -o ./tmp/main ."
   delay = 1000
