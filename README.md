@@ -14,6 +14,8 @@ A modern single-page application that visualizes Stockholm County with interacti
 - 🎨 Modern gradient design with smooth animations
 - 🔍 Interactive popups with detailed datacenter information
 - 🚀 **Go backend API** with automatic VM migration and data persistence
+- 🔍 **KubeVirt VM Watcher** - Monitor real VMs across multiple Kubernetes clusters
+- ☸️ **Multi-cluster support** - Watch VMs across different Kubernetes/OpenShift clusters
 
 ## Technology Stack
 
@@ -95,7 +97,27 @@ go build -o summit-connect
 
 # Start the backend server (serves both API and frontend)
 ./summit-connect serve backend --port 3001
+
+# Start with KubeVirt VM watcher enabled
+./summit-connect serve backend --watch-vms
 ```
+
+## VM Watcher (KubeVirt Integration)
+
+The application includes a powerful VM watcher that can monitor real KubeVirt Virtual Machines across multiple Kubernetes clusters. This feature bridges the gap between the simulation and real infrastructure.
+
+### Features
+- **Multi-cluster monitoring**: Watch VMs across multiple Kubernetes/OpenShift clusters
+- **Real-time synchronization**: Automatic database updates when VMs change
+- **Resource extraction**: CPU, memory, disk, and network information
+- **Graceful error handling**: Continues running even if some clusters are unavailable
+
+### Setup
+1. Configure clusters in `config/datacenters.yaml`
+2. Place kubeconfig files in `config/.kubeconfigs/`
+3. Start server with `--watch-vms` flag
+
+For detailed setup instructions, see [WATCHER.md](./WATCHER.md).
 
 ## API Endpoints
 

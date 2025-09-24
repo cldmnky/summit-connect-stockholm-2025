@@ -5,6 +5,9 @@ build-errors.log
 
 # Development tools
 
+# kubeconfigs
+.kubeconfigs/
+
 # Artifacts directory
 bin/
 
