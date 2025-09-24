@@ -130,7 +130,7 @@ func (ds *DataStore) InitializeFromVMWatcherConfig(configPath string) error {
 			Kubeconfig string `yaml:"kubeconfig"`
 		} `yaml:"clusters"`
 	}
-	
+
 	type WatcherConfig struct {
 		Datacenters []WatcherDatacenter `yaml:"datacenters"`
 	}
@@ -155,7 +155,7 @@ func (ds *DataStore) InitializeFromVMWatcherConfig(configPath string) error {
 		for _, cluster := range wdc.Clusters {
 			clusterNames = append(clusterNames, cluster.Name)
 		}
-		
+
 		datacenter := models.Datacenter{
 			ID:          wdc.ID,
 			Name:        wdc.Name,
@@ -328,7 +328,7 @@ func (ds *DataStore) UpdateDatacenter(id string, name *string, location *string,
 	return nil, fmt.Errorf("datacenter %s not found", id)
 }
 
-// UpdateVM updates fields of a VM in a datacenter
+// UpdateVM updates fields of a VM in a datacenter (legacy method for backward compatibility)
 func (ds *DataStore) UpdateVM(dcID, vmID string, name *string, status *string, cpu *int, memory *int, disk *int, cluster *string) (*models.VM, error) {
 	start := time.Now()
 	fmt.Printf("[DataStore] UpdateVM entry dc=%s vm=%s\n", dcID, vmID)
@@ -378,6 +378,55 @@ func (ds *DataStore) UpdateVM(dcID, vmID string, name *string, status *string, c
 	}
 	ds.mu.Unlock()
 	fmt.Printf("[DataStore] UpdateVM exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+	return nil, fmt.Errorf("datacenter %s not found", dcID)
+}
+
+// UpdateVMComplete updates all fields of a VM in a datacenter with the complete VM model
+func (ds *DataStore) UpdateVMComplete(dcID, vmID string, updatedVM *models.VM) (*models.VM, error) {
+	start := time.Now()
+	fmt.Printf("[DataStore] UpdateVMComplete entry dc=%s vm=%s\n", dcID, vmID)
+	ds.mu.Lock()
+	for i := range ds.data.Datacenters {
+		if ds.data.Datacenters[i].ID == dcID {
+			for j := range ds.data.Datacenters[i].VMs {
+				if ds.data.Datacenters[i].VMs[j].ID == vmID {
+					// Update all fields from the provided VM model
+					vm := &ds.data.Datacenters[i].VMs[j]
+					vm.Name = updatedVM.Name
+					vm.Status = updatedVM.Status
+					vm.CPU = updatedVM.CPU
+					vm.Memory = updatedVM.Memory
+					vm.Disk = updatedVM.Disk
+					vm.Cluster = updatedVM.Cluster
+					vm.Namespace = updatedVM.Namespace
+					vm.Phase = updatedVM.Phase
+					vm.IP = updatedVM.IP
+					vm.NodeName = updatedVM.NodeName
+					vm.Ready = updatedVM.Ready
+					vm.Age = updatedVM.Age
+
+					copy := *vm
+					// marshal and write
+					buf, err := json.Marshal(ds.data)
+					ds.mu.Unlock()
+					if err != nil {
+						fmt.Printf("[DataStore] UpdateVMComplete marshal error: %v\n", err)
+					} else {
+						if err := ds.writeToDB(buf); err != nil {
+							fmt.Printf("[DataStore] UpdateVMComplete writeToDB error: %v\n", err)
+						}
+					}
+					fmt.Printf("[DataStore] UpdateVMComplete exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+					return &copy, nil
+				}
+			}
+			ds.mu.Unlock()
+			fmt.Printf("[DataStore] UpdateVMComplete exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
+			return nil, fmt.Errorf("vm %s not found in datacenter %s", vmID, dcID)
+		}
+	}
+	ds.mu.Unlock()
+	fmt.Printf("[DataStore] UpdateVMComplete exit dc=%s vm=%s duration=%s\n", dcID, vmID, time.Since(start))
 	return nil, fmt.Errorf("datacenter %s not found", dcID)
 }
 

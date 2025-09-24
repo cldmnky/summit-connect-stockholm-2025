@@ -51,25 +51,31 @@ Examples:
 				os.Setenv("SUMMIT_DB", dbPath)
 			}
 			log.Printf("Starting backend API server on port %d", port)
-			
+			log.Printf("VM watcher enabled: %v", watchVMs)
+
 			// When VM watcher is enabled, we want to initialize with datacenter structure
 			// but let the watcher populate the actual VMs from KubeVirt clusters
 			if watchVMs {
+				log.Printf("Using VM watcher mode initialization")
 				// Use the datacenter config for both DataStore and VM watcher
 				datacenterConfigPath := "config/datacenters.yaml"
 				if configPath != "" {
 					datacenterConfigPath = configPath
 				}
-				
+				log.Printf("Datacenter config path: %s", datacenterConfigPath)
+
+				log.Printf("Initializing DataStore for VM watcher with config: %s", datacenterConfigPath)
 				// Initialize datastore with datacenter structure from VM watcher config (no sample data)
 				if err := server.InitDataStoreForVMWatcher(dbPath, datacenterConfigPath); err != nil {
 					log.Fatalf("failed to init datastore for VM watcher: %v", err)
 				}
-				
+
+				log.Printf("Initializing VM watcher with config: %s", datacenterConfigPath)
 				// Initialize VM watcher to populate real VMs
 				if err := server.InitVMWatcher(datacenterConfigPath); err != nil {
 					log.Fatalf("failed to init VM watcher: %v", err)
 				}
+				log.Printf("VM watcher initialization completed")
 			} else {
 				// Without VM watcher, use traditional initialization
 				// If a config path was provided use that (Viper will handle it). Otherwise leave seedPath empty

@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
@@ -297,32 +296,8 @@ func (cw *ClusterWatcher) convertToModelVM(vm *kubevirtv1.VirtualMachine) *model
 		Age:       cw.formatAge(vm.CreationTimestamp.Time),
 	}
 
-	// Extract resource requirements
-	if vm.Spec.Template != nil && vm.Spec.Template.Spec.Domain.Resources.Requests != nil {
-		requests := vm.Spec.Template.Spec.Domain.Resources.Requests
-
-		// CPU
-		if cpu := requests[v1.ResourceCPU]; !cpu.IsZero() {
-			if cpuVal, ok := cpu.AsInt64(); ok {
-				modelVM.CPU = int(cpuVal)
-			} else {
-				// Handle CPU in millicores
-				if cpuMilliVal := cpu.MilliValue(); cpuMilliVal > 0 {
-					modelVM.CPU = int(cpuMilliVal / 1000)
-					if modelVM.CPU == 0 {
-						modelVM.CPU = 1 // Minimum 1 CPU
-					}
-				}
-			}
-		}
-
-		// Memory (convert from bytes to MB)
-		if memory := requests[v1.ResourceMemory]; !memory.IsZero() {
-			if memoryVal, ok := memory.AsInt64(); ok {
-				modelVM.Memory = int(memoryVal / (1024 * 1024))
-			}
-		}
-	}
+	// Set default disk size (will be updated from VMI status later)
+	modelVM.Disk = 100
 
 	// Get VM status
 	modelVM.Status = "unknown"
@@ -352,25 +327,6 @@ func (cw *ClusterWatcher) convertToModelVM(vm *kubevirtv1.VirtualMachine) *model
 	// Try to get VM instance for more detailed info
 	if modelVM.Status == "running" {
 		cw.enrichVMWithInstanceInfo(modelVM)
-	}
-
-	// Extract disk size (simplified - just get first disk)
-	if vm.Spec.Template != nil {
-		for _, volume := range vm.Spec.Template.Spec.Volumes {
-			if volume.DataVolume != nil {
-				// Try to get disk size from storage request
-				modelVM.Disk = 100 // Default, could be enhanced to actually read PVC size
-				break
-			} else if volume.PersistentVolumeClaim != nil {
-				modelVM.Disk = 100 // Default for PVC
-				break
-			}
-		}
-	}
-
-	// Default disk size if not set
-	if modelVM.Disk == 0 {
-		modelVM.Disk = 20
 	}
 
 	return modelVM
@@ -405,6 +361,36 @@ func (cw *ClusterWatcher) enrichVMWithInstanceInfo(modelVM *models.VM) {
 		modelVM.Phase = string(vmi.Status.Phase)
 		modelVM.Ready = vmi.Status.Phase == kubevirtv1.Running
 	}
+
+	// Extract CPU from VMI spec domain.cpu.sockets
+	if vmi.Spec.Domain.CPU != nil && vmi.Spec.Domain.CPU.Sockets != 0 {
+		modelVM.CPU = int(vmi.Spec.Domain.CPU.Sockets)
+	}
+
+	// Extract Memory from VMI spec domain.memory.guest
+	if vmi.Spec.Domain.Memory != nil && vmi.Spec.Domain.Memory.Guest != nil {
+		if memoryVal, ok := vmi.Spec.Domain.Memory.Guest.AsInt64(); ok {
+			// Convert from bytes to MB
+			modelVM.Memory = int(memoryVal / (1024 * 1024))
+		}
+	}
+
+	// Extract Disk size from VMI status volumeStatus for rootdisk
+	if len(vmi.Status.VolumeStatus) > 0 {
+		for _, volume := range vmi.Status.VolumeStatus {
+			if volume.Name == "rootdisk" && volume.PersistentVolumeClaimInfo != nil {
+				if storage, exists := volume.PersistentVolumeClaimInfo.Capacity["storage"]; exists && !storage.IsZero() {
+					// Use Value() method to get the storage in bytes
+					storageBytes := storage.Value()
+					if storageBytes > 0 {
+						// Convert from bytes to GB
+						modelVM.Disk = int(storageBytes / (1024 * 1024 * 1024))
+					}
+				}
+				break
+			}
+		}
+	}
 }
 
 // formatAge formats the age of the VM
@@ -421,8 +407,8 @@ func (cw *ClusterWatcher) formatAge(t time.Time) string {
 
 // updateVMInDatabase updates or creates a VM in the database
 func (cw *ClusterWatcher) updateVMInDatabase(vm *models.VM) error {
-	// First try to update existing VM
-	_, err := cw.dataStore.UpdateVM(cw.config.DatacenterID, vm.ID, &vm.Name, &vm.Status, &vm.CPU, &vm.Memory, &vm.Disk, &vm.Cluster)
+	// First try to update existing VM with complete VM model
+	_, err := cw.dataStore.UpdateVMComplete(cw.config.DatacenterID, vm.ID, vm)
 	if err != nil {
 		// VM doesn't exist, try to add it
 		_, err = cw.dataStore.AddVM(cw.config.DatacenterID, *vm)
