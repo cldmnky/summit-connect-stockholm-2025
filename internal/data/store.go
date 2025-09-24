@@ -3,13 +3,13 @@ package data
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
 	bbolt "github.com/etcd-io/bbolt"
+	"github.com/spf13/viper"
 
 	"github.com/cldmnky/summit-connect-stockholm-2025/internal/models"
 )
@@ -56,17 +56,53 @@ func NewDataStore(dbPath string, jsonSeedPath string) (*DataStore, error) {
 
 	// Try to load from DB
 	if err := ds.loadFromDB(); err != nil {
-		// If DB empty and we have a json seed file, load from it and persist
+		// DB empty. Prefer Viper-based seeding.
+		// If a config path was provided, attempt to use it. Otherwise try default config name "datacenters"
 		if jsonSeedPath != "" {
-			if _, statErr := os.Stat(jsonSeedPath); statErr == nil {
-				if err := ds.loadFromJSONFile(jsonSeedPath); err == nil {
-					// persist initial data to DB
-					if perr := ds.saveToDB(); perr != nil {
+			// treat provided path as a config file for viper
+			v := viper.New()
+			v.SetConfigFile(jsonSeedPath)
+			v.AutomaticEnv()
+			if err := v.ReadInConfig(); err == nil {
+				var col models.DatacenterCollection
+				if err := v.Unmarshal(&col); err == nil {
+					ds.data = &col
+					fmt.Printf("[DataStore] seeded DB via viper config file %s\n", jsonSeedPath)
+					if perr := ds.writeSeedAndLog(); perr != nil {
 						return nil, perr
 					}
+					return ds, nil
 				}
+			} else {
+				fmt.Printf("[DataStore] viper failed to read config %s: %v\n", jsonSeedPath, err)
 			}
 		}
+
+		// No explicit seed path or previous attempt failed — try viper default config name in common locations
+		v := viper.New()
+		v.SetConfigName("datacenters")
+		v.AddConfigPath(filepath.Join(".", "frontend"))
+		// also look in ./config for project-level config files
+		v.AddConfigPath(filepath.Join(".", "config"))
+		v.AddConfigPath(".")
+		v.AutomaticEnv()
+		if err := v.ReadInConfig(); err == nil {
+			var col models.DatacenterCollection
+			if err := v.Unmarshal(&col); err == nil {
+				ds.data = &col
+				fmt.Printf("[DataStore] seeded DB via viper default config (datacenters)\n")
+				if perr := ds.writeSeedAndLog(); perr != nil {
+					return nil, perr
+				}
+				return ds, nil
+			}
+		} else {
+			fmt.Printf("[DataStore] viper default config not found: %v\n", err)
+		}
+
+		// If no config found, initialize with embedded sample data and persist
+		fmt.Printf("[DataStore] no config found, initializing with sample data\n")
+		ds.InitializeWithSampleData()
 	}
 
 	return ds, nil
@@ -82,7 +118,7 @@ func (ds *DataStore) loadFromJSONFile(filename string) error {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
 
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
@@ -157,6 +193,18 @@ func (ds *DataStore) writeToDB(buf []byte) error {
 		fmt.Printf("[DataStore] writeToDB ok duration=%s\n", dur)
 	}
 	return err
+}
+
+// writeSeedAndLog marshals current in-memory ds.data and persists it to DB (used for seeding)
+func (ds *DataStore) writeSeedAndLog() error {
+	ds.mu.RLock()
+	buf, err := json.Marshal(ds.data)
+	ds.mu.RUnlock()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("[DataStore] seeding DB: size=%d\n", len(buf))
+	return ds.writeToDB(buf)
 }
 
 // GetDatacenters returns all datacenters (deep copy)

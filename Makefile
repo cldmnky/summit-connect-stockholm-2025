@@ -29,7 +29,7 @@ build:
 start: build
 	@mkdir -p $(LOG_DIR) $(PID_DIR)
 	@echo "Starting backend server (background)..."
-	@nohup ./summit-connect serve backend --port 3001 > $(LOG_DIR)/server.log 2>&1 & echo $$! > $(PID_DIR)/server.pid
+	@nohup ./summit-connect serve backend --port 3001 --config ./config/datacenters.yaml > $(LOG_DIR)/server.log 2>&1 & echo $$! > $(PID_DIR)/server.pid
 	@sleep 1
 	@echo "Started. Server PID: `cat $(PID_DIR)/server.pid 2>/dev/null || echo -`"
 	@echo "Logs: $(LOG_DIR)/server.log"
@@ -39,6 +39,10 @@ start: build
 dev:
 	@echo "Starting development server with hot reloading..."
 	@echo "Press Ctrl+C to stop"
+	# remove default dev DB so each dev run starts fresh
+	@if [ -f /tmp/summit-connect.db ]; then rm -f /tmp/summit-connect.db && echo "Removed existing /tmp/summit-connect.db"; fi
+	# also remove the test DB used by quick runs
+	@if [ -f /tmp/summit-viper-test.db ]; then rm -f /tmp/summit-viper-test.db && echo "Removed existing /tmp/summit-viper-test.db"; fi
 	@which air > /dev/null 2>&1 || (echo "Installing air for hot reloading..." && go install github.com/air-verse/air@latest)
 	@if [ ! -f .air.toml ]; then \
 		echo "Creating .air.toml configuration..."; \
@@ -47,7 +51,7 @@ dev:
 		echo 'tmp_dir = "tmp"' >> .air.toml; \
 		echo '' >> .air.toml; \
 		echo '[build]' >> .air.toml; \
-		echo '  args_bin = ["serve", "backend", "--port", "3001"]' >> .air.toml; \
+		echo '  args_bin = ["serve", "backend", "--port", "3001", "--config", "./config/datacenters.yaml"]' >> .air.toml; \
 		echo '  bin = "./tmp/main"' >> .air.toml; \
 		echo '  cmd = "go build -o ./tmp/main ."' >> .air.toml; \
 		echo '  delay = 1000' >> .air.toml; \
