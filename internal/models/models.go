@@ -11,6 +11,9 @@ type VM struct {
 	Memory         int        `json:"memory"`
 	Disk           int        `json:"disk"`
 	LastMigratedAt *time.Time `json:"_lastMigratedAt,omitempty"`
+	// Migration tracking
+	PreviousCluster string `json:"previousCluster,omitempty"`
+	MigrationStatus string `json:"migrationStatus,omitempty"` // "migrating", "completed", ""
 	// Kubernetes / KubeVirt fields
 	Cluster   string `json:"cluster,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
