@@ -157,6 +157,32 @@ main {
     transform: translateY(-1px);
 }
 
+.vm-row.migrating {
+    border-left: 4px solid #0ea5a4;
+    background: linear-gradient(90deg, rgba(14, 165, 164, 0.05) 0%, rgba(255, 255, 255, 1) 10%);
+    animation: vmMigrationGlow 2s ease-in-out infinite;
+}
+
+.vm-row.migrating .vm-name {
+    color: #0891b2;
+}
+
+.vm-row.migrating .vm-status {
+    color: #0ea5a4;
+    font-weight: 600;
+}
+
+@keyframes vmMigrationGlow {
+    0%, 100% { 
+        background: linear-gradient(90deg, rgba(14, 165, 164, 0.05) 0%, rgba(255, 255, 255, 1) 10%);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    50% { 
+        background: linear-gradient(90deg, rgba(14, 165, 164, 0.1) 0%, rgba(255, 255, 255, 1) 15%);
+        box-shadow: 0 2px 8px rgba(14, 165, 164, 0.2);
+    }
+}
+
 .vm-row .vm-name { 
     color: #151515; 
     font-weight: 600;
@@ -284,6 +310,17 @@ main {
     z-index: 2000;
     border: 1px solid #333;
     max-width: 320px;
+}
+
+.toast.migration {
+    background: #0ea5a4;
+    border: 1px solid #0891b2;
+    animation: migrationPulse 2s ease-in-out infinite;
+}
+
+@keyframes migrationPulse {
+    0%, 100% { box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+    50% { box-shadow: 0 4px 20px rgba(14, 165, 164, 0.4); }
 }
 
 .map-control-btn {
@@ -770,5 +807,34 @@ main {
     
     .stats {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Migration Line Styles */
+.migration-line {
+    animation: migration-flow 2s ease-in-out infinite;
+}
+
+@keyframes migration-flow {
+    0% {
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dashoffset: 20px;
+    }
+}
+
+/* Migration line path animation */
+.leaflet-overlay-pane .migration-line path {
+    stroke-dasharray: 10, 10;
+    animation: migration-dash 1.5s linear infinite;
+}
+
+@keyframes migration-dash {
+    0% {
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dashoffset: 20;
     }
 }

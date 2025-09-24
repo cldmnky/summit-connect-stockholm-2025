@@ -14,6 +14,8 @@ type VM struct {
 	// Migration tracking
 	PreviousCluster string `json:"previousCluster,omitempty"`
 	MigrationStatus string `json:"migrationStatus,omitempty"` // "migrating", "completed", ""
+	MigrationSource string `json:"migrationSource,omitempty"` // Source cluster for migration
+	MigrationTarget string `json:"migrationTarget,omitempty"` // Target cluster for migration
 	// Kubernetes / KubeVirt fields
 	Cluster   string `json:"cluster,omitempty"`
 	Namespace string `json:"namespace,omitempty"`

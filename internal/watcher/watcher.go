@@ -210,13 +210,13 @@ func (cw *ClusterWatcher) syncExistingVMs() error {
 
 	for _, vm := range vms.Items {
 		modelVM := cw.convertToModelVM(&vm)
-		
+
 		// Skip stopped VMs - don't add them to the store
 		if modelVM.Status == "stopped" {
 			log.Printf("Skipping stopped VM %s in cluster %s", vm.Name, cw.config.Name)
 			continue
 		}
-		
+
 		if err := cw.updateVMInDatabase(modelVM); err != nil {
 			log.Printf("Failed to update VM %s in database: %v", vm.Name, err)
 		}
@@ -283,13 +283,13 @@ func (cw *ClusterWatcher) handleVMEvent(event watch.Event) error {
 	switch event.Type {
 	case watch.Added, watch.Modified:
 		modelVM := cw.convertToModelVM(vm)
-		
+
 		// If VM is stopped, remove it from the store (if it exists) instead of adding/updating
 		if modelVM.Status == "stopped" {
 			log.Printf("VM %s is stopped, removing from store if present", vm.Name)
 			return cw.removeVMFromDatabase(vm.Name)
 		}
-		
+
 		// Only add/update running VMs
 		return cw.updateVMInDatabase(modelVM)
 	case watch.Deleted:
@@ -333,6 +333,16 @@ func (cw *ClusterWatcher) convertToModelVM(vm *kubevirtv1.VirtualMachine) *model
 			modelVM.Status = "running"
 			modelVM.Phase = "Running"
 			modelVM.Ready = true
+		case kubevirtv1.VirtualMachineStatusMigrating:
+			modelVM.Status = "migrating"
+			modelVM.Phase = "Migrating"
+			modelVM.Ready = true // VM is still accessible during migration
+			modelVM.MigrationStatus = "migrating"
+		case kubevirtv1.VirtualMachineStatusWaitingForReceiver:
+			modelVM.Status = "waitingforreceiver"
+			modelVM.Phase = "WaitingForReceiver"
+			modelVM.Ready = true // VM is still accessible during migration
+			modelVM.MigrationStatus = "migrating"
 		default:
 			modelVM.Status = strings.ToLower(string(vm.Status.PrintableStatus))
 			modelVM.Phase = string(vm.Status.PrintableStatus)
@@ -340,7 +350,7 @@ func (cw *ClusterWatcher) convertToModelVM(vm *kubevirtv1.VirtualMachine) *model
 	}
 
 	// Try to get VM instance for more detailed info
-	if modelVM.Status == "running" {
+	if modelVM.Status == "running" || modelVM.Status == "migrating" || modelVM.Status == "waitingforreceiver" {
 		cw.enrichVMWithInstanceInfo(modelVM)
 	}
 
