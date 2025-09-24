@@ -210,6 +210,13 @@ func (cw *ClusterWatcher) syncExistingVMs() error {
 
 	for _, vm := range vms.Items {
 		modelVM := cw.convertToModelVM(&vm)
+		
+		// Skip stopped VMs - don't add them to the store
+		if modelVM.Status == "stopped" {
+			log.Printf("Skipping stopped VM %s in cluster %s", vm.Name, cw.config.Name)
+			continue
+		}
+		
 		if err := cw.updateVMInDatabase(modelVM); err != nil {
 			log.Printf("Failed to update VM %s in database: %v", vm.Name, err)
 		}
@@ -276,6 +283,14 @@ func (cw *ClusterWatcher) handleVMEvent(event watch.Event) error {
 	switch event.Type {
 	case watch.Added, watch.Modified:
 		modelVM := cw.convertToModelVM(vm)
+		
+		// If VM is stopped, remove it from the store (if it exists) instead of adding/updating
+		if modelVM.Status == "stopped" {
+			log.Printf("VM %s is stopped, removing from store if present", vm.Name)
+			return cw.removeVMFromDatabase(vm.Name)
+		}
+		
+		// Only add/update running VMs
 		return cw.updateVMInDatabase(modelVM)
 	case watch.Deleted:
 		return cw.removeVMFromDatabase(vm.Name)
@@ -427,6 +442,11 @@ func (cw *ClusterWatcher) updateVMInDatabase(vm *models.VM) error {
 func (cw *ClusterWatcher) removeVMFromDatabase(vmName string) error {
 	err := cw.dataStore.RemoveVM(cw.config.DatacenterID, vmName)
 	if err != nil {
+		// If VM doesn't exist, that's fine - it might not have been in the store
+		if strings.Contains(err.Error(), "not found") {
+			log.Printf("VM %s was not in store (datacenter %s), skipping removal", vmName, cw.config.DatacenterID)
+			return nil
+		}
 		return fmt.Errorf("failed to remove VM from database: %w", err)
 	}
 
