@@ -9,7 +9,6 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.9
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.15.0
-	k8s.io/api v0.32.5
 	k8s.io/apimachinery v0.32.5
 	k8s.io/client-go v0.32.5
 	kubevirt.io/api v1.6.1
@@ -55,6 +54,7 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	k8s.io/api v0.32.5 // indirect
 	k8s.io/apiextensions-apiserver v0.32.5 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.31.0 // indirect

@@ -22,13 +22,12 @@ import (
 
 // VMWatcher watches for VM changes across multiple clusters
 type VMWatcher struct {
-	dataStore         *data.DataStore
-	clusters          []ClusterConfig
-	watchers          map[string]*ClusterWatcher
-	migrationDetector *MigrationDetector
-	ctx               context.Context
-	cancel            context.CancelFunc
-	mu                sync.RWMutex
+	dataStore *data.DataStore
+	clusters  []ClusterConfig
+	watchers  map[string]*ClusterWatcher
+	ctx       context.Context
+	cancel    context.CancelFunc
+	mu        sync.RWMutex
 }
 
 // ClusterWatcher watches VMs in a specific cluster
@@ -59,30 +58,14 @@ func NewVMWatcher(dataStore *data.DataStore, configPath string) (*VMWatcher, err
 	ctx, cancel := context.WithCancel(context.Background())
 
 	watcher := &VMWatcher{
-		dataStore:         dataStore,
-		clusters:          clusters,
-		watchers:          make(map[string]*ClusterWatcher),
-		migrationDetector: NewMigrationDetector(),
-		ctx:               ctx,
-		cancel:            cancel,
+		dataStore: dataStore,
+		clusters:  clusters,
+		watchers:  make(map[string]*ClusterWatcher),
+		ctx:       ctx,
+		cancel:    cancel,
 	}
 
 	return watcher, nil
-}
-
-// startMigrationCleanup runs periodic cleanup of stale migration entries
-func (w *VMWatcher) startMigrationCleanup() {
-	ticker := time.NewTicker(1 * time.Minute)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-w.ctx.Done():
-			return
-		case <-ticker.C:
-			w.migrationDetector.CleanupStaleEntries()
-		}
-	}
 }
 
 // Start begins watching all clusters for VM changes
@@ -112,9 +95,6 @@ func (w *VMWatcher) Start() error {
 	}
 
 	log.Printf("Started watching %d clusters", len(w.watchers))
-
-	// Start cleanup goroutine for migration detector
-	go w.startMigrationCleanup()
 
 	return nil
 }

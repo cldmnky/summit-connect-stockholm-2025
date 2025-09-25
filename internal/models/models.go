@@ -12,7 +12,6 @@ type VM struct {
 	Disk           int        `json:"disk"`
 	LastMigratedAt *time.Time `json:"_lastMigratedAt,omitempty"`
 	// Migration tracking
-	PreviousCluster string `json:"previousCluster,omitempty"`
 	MigrationStatus string `json:"migrationStatus,omitempty"` // "migrating", "completed", ""
 	MigrationSource string `json:"migrationSource,omitempty"` // Source cluster for migration
 	MigrationTarget string `json:"migrationTarget,omitempty"` // Target cluster for migration
