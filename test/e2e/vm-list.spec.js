@@ -1,10 +1,15 @@
 const { test, expect } = require('@playwright/test');
 
-// This test loads the frontend index.html via file:// and checks VM list rendering and controls.
-// Note: Playwright served file:// requests may have cross-origin restrictions when loading remote resources (Leaflet CDN).
-// For a robust test run, start the app server (e.g. `go run main.go` or `make serve`) and change the URL to http://127.0.0.1:3001
+// This test prefers running against a local app server. Set PW_BASE_URL to point to your running
+// backend/frontend server (for example: http://127.0.0.1:3001). If PW_BASE_URL is unset it will
+// default to http://127.0.0.1:3001.
+//
+// If you don't run a server, the fallback file:// approach may work but can be flaky due to
+// cross-origin restrictions when loading CDN resources (Leaflet, D3). Recommended: start the
+// dev server and run tests against it.
 
-const localFile = `file://${process.cwd()}/frontend/index.html`;
+const BASE_URL = process.env.PW_BASE_URL || 'http://127.0.0.1:3001';
+const localFile = `${BASE_URL}/`;
 
 test.describe('VM list rendering', () => {
   test('renders VM list and Center button works', async ({ page }) => {
