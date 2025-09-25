@@ -13,14 +13,17 @@ body {
     padding: 0;
 }
 
-.container {
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
+/* App-specific container to avoid Bulma .container breakpoint limits */
+.app-container {
+    width: 100%;
+    max-width: min(2600px, 98vw); /* use nearly full viewport on very wide monitors */
+    margin: 0 auto; /* center on wide screens */
+    padding: 18px 28px;
     background: #ffffff;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh; /* allow content to grow if needed */
+    overflow: visible; /* let child panels handle overflow */
+    transition: max-width 240ms ease, padding 240ms ease;
 }
 
 /* Add Red Hat-style header */
@@ -69,10 +72,10 @@ header p {
 }
 
 main {
-    padding: 0 16px 16px 16px;
+    padding: 0 8px 16px 8px;
     background: #ffffff;
-    height: calc(100vh - 120px);
-    overflow: hidden;
+    /* Use flexible columns on wide screens so the map can expand */
+    display: block;
 }
 
 .map-container {
@@ -83,13 +86,17 @@ main {
     border: 1px solid #d2d2d2;
     position: relative;
     overflow: hidden;
+    /* allow the map container to grow within a flex column; use max-height to avoid viewport overflow */
+    max-height: calc(100vh - 160px);
     height: 100%;
 }
 
 /* Make map larger and fill available space */
 #map {
     width: 100%;
-    height: calc(100vh - 120px);
+    /* Fill the map-container's height rather than forcing absolute viewport calc */
+    height: 100%;
+    min-height: 480px; /* keep a decent minimum */
     border-radius: 8px;
     z-index: 1;
 }
@@ -126,6 +133,7 @@ main {
     border: 1px solid rgba(210,210,210,0.8);
 }
 
+
 .overlay .box h3 {
     color: #151515;
     font-weight: 600;
@@ -136,7 +144,7 @@ main {
 }
 
 .overlay-top-left { top: 12px; left: 12px; max-width: 280px; }
-.overlay-bottom-left { bottom: 80px; left: 12px; max-width: 350px; max-height: 400px; overflow: auto; }
+.overlay-bottom-left { bottom: 80px; left: 12px; max-width: 420px; max-height: 420px; overflow: auto; }
 .overlay-top-right { top: 12px; right: 12px; max-width: 260px; }
 
 .overlay { z-index: 1400; }
@@ -841,6 +849,71 @@ main {
     }
 }
 
+/* Large-screen tweaks: allow the layout to expand and give the map/panels more height */
+@media (min-width: 1400px) {
+    .container {
+        max-width: 2200px;
+        padding: 18px 28px;
+    }
+
+    /* slightly reduce header footprint and give map more vertical room on very wide screens */
+    main {
+        height: calc(100vh - 120px);
+    }
+
+    #map {
+        height: calc(100vh - 120px);
+    }
+
+    .datacenter-panel {
+        height: calc(100vh - 120px);
+    }
+}
+
+/* Two-column layout on very wide screens */
+@media (min-width: 1200px) {
+    /* Use Bulma's .columns as the flex container so inner .column widths behave correctly */
+    .columns {
+        display: flex;
+        gap: 24px;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    /* Make the main content column expand to fill available space */
+    .columns > .column.is-9 {
+        flex: 1 1 auto; /* make left column very flexible */
+        min-width: 0; /* allow children to shrink properly */
+    }
+
+    /* Keep the right panel a fixed-ish column */
+    .columns > .column.is-3 {
+        flex: 0 0 360px; /* slightly wider panel on large screens */
+    }
+
+    .map-container {
+        max-height: calc(100vh - 160px);
+    }
+
+    /* ultra-wide adjustments for very large monitors (>=2000px) */
+    @media (min-width: 2000px) {
+        .container { max-width: 98vw; padding: 20px 36px; }
+        .columns > .column.is-3 { flex: 0 0 380px; }
+        #map { min-height: 760px; }
+    }
+
+    .datacenter-panel {
+        max-height: calc(100vh - 160px);
+        overflow-y: auto;
+        height: 100%;
+    }
+
+    /* Ensure overlays position correctly inside map when it's flexible */
+    #map {
+        min-height: 640px;
+    }
+}
+
 /* Migration Line Styles */
 .migration-line {
     animation: migration-flow 2s ease-in-out infinite;
@@ -963,6 +1036,26 @@ main {
     border-bottom: 2px solid #e5e5e5;
     padding-bottom: 6px;
     font-size: 18px;
+}
+
+.vm-list-panel {
+    margin-top: 12px;
+}
+
+.vm-list-panel .vm-list {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    border: 1px solid #f1f5f9;
+}
+
+.vm-list-panel .vm-list-rows {
+    max-height: 320px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .datacenter-view {

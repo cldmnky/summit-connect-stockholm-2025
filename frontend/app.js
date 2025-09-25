@@ -1757,12 +1757,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Make app globally accessible
     window.app = app;
     
-    // Handle window resize
-    window.addEventListener('resize', () => {
-        setTimeout(() => {
-            if (app.map) {
-                app.map.invalidateSize();
+    // Handle window resize with debounce: invalidate Leaflet size and update overlays
+    (function() {
+        let resizeTimer = null;
+        const onResizeDone = () => {
+            if (!app || !app.map) return;
+            try {
+                // Force Leaflet to recalculate sizes and redraw tiles
+                app.map.invalidateSize(true);
+            } catch (e) {
+                console.warn('map.invalidateSize failed:', e);
             }
-        }, 100);
-    });
+
+            // Update force-directed graph positions and other overlays to align with new map projection
+            try {
+                if (app.datacenters && app.datacenters.length) {
+                    app.datacenters.forEach(dc => {
+                        try { app.updateForceGraphPosition(dc.id); } catch (e) {/* ignore per-dc errors */}
+                    });
+                }
+            } catch (e) {
+                console.warn('Failed to update force graph positions after resize:', e);
+            }
+        };
+
+        window.addEventListener('resize', () => {
+            if (resizeTimer) clearTimeout(resizeTimer);
+            // wait until resize stops (200ms) before recalculating map overlays
+            resizeTimer = setTimeout(onResizeDone, 200);
+        });
+    })();
 });
