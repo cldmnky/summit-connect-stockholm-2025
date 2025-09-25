@@ -701,7 +701,7 @@ class StockholmDatacentersMap {
                         const fromName = fromDc?.name || 'Unknown DC';
                         const toName = toDc?.name || 'Unknown DC';
                         const vmName = vm?.name || 'Unknown VM';
-                        this.showMigrationNotification(`VM ${vmName} migrated from ${fromName} to ${toName}`, vm);
+                        console.log(`Migration completed: VM ${vmName} migrated from ${fromName} to ${toName}`);
                     } else {
                         console.warn('Migration detected but missing data:', { fromDc: !!fromDc, toDc: !!toDc, vm: !!vm, fromDcId, toDcId, vmId });
                     }
@@ -870,64 +870,6 @@ class StockholmDatacentersMap {
                 }, 800);
             }
         }, stepMs);
-    }
-    
-    showMigrationNotification(vm, fromDatacenter, toDatacenter) {
-        const message = `VM ${vm.name || vm.vmId} is migrating from ${fromDatacenter.name} to ${toDatacenter.name}`;
-        
-        // Create or get the notification container
-        let notificationContainer = document.getElementById('notification-container');
-        if (!notificationContainer) {
-            notificationContainer = document.createElement('div');
-            notificationContainer.id = 'notification-container';
-            notificationContainer.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                z-index: 10000;
-                pointer-events: none;
-            `;
-            document.body.appendChild(notificationContainer);
-            }
-        
-        // Create notification toast
-        const notification = document.createElement('div');
-        notification.className = 'toast migration';
-        notification.style.cssText = `
-            margin-bottom: 10px;
-            pointer-events: auto;
-            max-width: 350px;
-        `;
-        
-        notification.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="font-size: 18px;">🔄</div>
-                <div>
-                    <strong>Migration in Progress</strong><br>
-                    <span style="font-size: 0.9em; opacity: 0.9;">${message}</span>
-                </div>
-            </div>
-        `;
-        
-        // Add to container
-        notificationContainer.appendChild(notification);
-        
-        // Animate in
-        setTimeout(() => {
-            notification.style.opacity = '1';
-            notification.style.transform = 'translateX(0)';
-        }, 50);
-        
-        // Remove after delay
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 300);
-        }, 5000);
     }
     
     drawMigrationLine(fromDatacenter, toDatacenter, vm) {
@@ -1174,25 +1116,85 @@ class StockholmDatacentersMap {
         const overlayLat = topEdge - (0.01 * (this.migrationOverlays.size + 1)); // Stack vertically
         const overlayLng = leftEdge + 0.02; // Offset from left edge
         
-        // Create migration overlay with VM node styling
+        // Create migration overlay with OpenShift-inspired styling
         const migrationOverlay = L.divIcon({
-            className: 'migration-overlay vm-node-styled',
+            className: 'migration-overlay openshift-styled',
             html: `
-                <div class="migration-overlay-container">
-                    <div class="migration-vm-icon">🔄</div>
-                    <div class="migration-info">
-                        <div class="migration-vm-name">${migration.vmName}</div>
-                        <div class="migration-path">
-                            <span class="migration-source">${sourceDc.name.replace('Stockholm ', '').replace(' DC', '')}</span>
-                            <span class="migration-arrow">→</span>
-                            <span class="migration-target">${targetDc.name.replace('Stockholm ', '').replace(' DC', '')}</span>
-                        </div>
-                        <div class="migration-phase">${migration.phase}</div>
+                <div class="migration-overlay-container" style="
+                    background: rgba(255, 255, 255, 0.95);
+                    border: 1px solid #d2d2d2;
+                    border-radius: 4px;
+                    padding: 8px 12px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+                    font-family: 'RedHatText', 'Red Hat Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    font-size: 13px;
+                    color: #151515;
+                    min-width: 200px;
+                    backdrop-filter: blur(4px);
+                ">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <div style="
+                            width: 16px;
+                            height: 16px;
+                            background: #0066cc;
+                            border-radius: 2px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-size: 10px;
+                            font-weight: 600;
+                        ">VM</div>
+                        <div style="
+                            font-weight: 600;
+                            color: #151515;
+                            font-size: 13px;
+                        ">${migration.vmName}</div>
+                    </div>
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        margin: 6px 0;
+                        color: #6a6e73;
+                        font-size: 12px;
+                    ">
+                        <span style="
+                            background: #f0f0f0;
+                            padding: 2px 6px;
+                            border-radius: 2px;
+                            font-size: 11px;
+                            font-weight: 500;
+                        ">${sourceDc.name.replace('Stockholm ', '').replace(' DC', '')}</span>
+                        <span style="color: #0066cc;">→</span>
+                        <span style="
+                            background: #e8f4fd;
+                            color: #0066cc;
+                            padding: 2px 6px;
+                            border-radius: 2px;
+                            font-size: 11px;
+                            font-weight: 500;
+                        ">${targetDc.name.replace('Stockholm ', '').replace(' DC', '')}</span>
+                    </div>
+                    <div style="
+                        font-size: 11px;
+                        color: #6a6e73;
+                        display: flex;
+                        align-items: center;
+                        gap: 4px;
+                    ">
+                        <div style="
+                            width: 8px;
+                            height: 8px;
+                            background: ${migration.phase === 'Running' ? '#3e8635' : '#0066cc'};
+                            border-radius: 50%;
+                        "></div>
+                        ${migration.phase}
                     </div>
                 </div>
             `,
-            iconSize: [180, 60],
-            iconAnchor: [10, 30]
+            iconSize: [220, 70],
+            iconAnchor: [10, 35]
         });
         
         // Create marker at left column position
@@ -1303,7 +1305,7 @@ class StockholmDatacentersMap {
             // Fallback to existing logic
             const otherDc = this.datacenters.find(d => d.id !== currentDc.id);
             if (otherDc) {
-                this.showMigrationNotification(vm, currentDc, otherDc);
+                console.log(`Migration fallback: VM ${vm.name} from ${currentDc.name} to ${otherDc.name}`);
                 this.drawMigrationLine(currentDc, otherDc, vm);
             }
         }
@@ -1943,7 +1945,7 @@ class StockholmDatacentersMap {
                 coordinates: [59.41966666666667, 17.94661111111111]
             };
             
-            self.showMigrationNotification(mockVM, fromDC, toDC);
+            console.log('Testing migration with mock VM:', mockVM.name, 'from', fromDC.name, 'to', toDC.name);
             self.drawMigrationLine(fromDC, toDC, mockVM);
             console.log('Migration notification and line test triggered!');
         };
