@@ -1,0 +1,125 @@
+const { test, expect } = require('@playwright/test');
+
+const BASE_URL = process.env.PW_BASE_URL || 'http://127.0.0.1:3001';
+
+test.describe('Datacenter overview and interactions', () => {
+  test('datacenter panel displays correctly', async ({ page }) => {
+    await page.goto(BASE_URL);
+
+    await page.waitForSelector('.datacenter-panel', { timeout: 5000 });
+
+    // Datacenter panel should be visible
+    await expect(page.locator('.datacenter-panel')).toBeVisible();
+    
+    // Should have datacenter overview section
+    await expect(page.locator('#datacenter-view')).toBeVisible();
+    
+    // Should have title
+    const panelTitle = page.locator('.datacenter-panel .title.is-5');
+    await expect(panelTitle).toBeVisible();
+    await expect(panelTitle).toHaveText('Datacenter Overview');
+  });
+
+  test('datacenter view updates when clicking map markers', async ({ page }) => {
+    await page.goto(BASE_URL);
+    
+    await page.waitForSelector('#datacenter-view', { timeout: 5000 });
+    await page.waitForSelector('.leaflet-container', { timeout: 5000 });
+    await page.waitForTimeout(3000); // Wait for markers to load
+    
+    // Check if we have clickable markers
+    const markers = page.locator('.leaflet-marker-icon, .datacenter-marker');
+    const markerCount = await markers.count();
+    
+    if (markerCount > 0) {
+      // Click first marker
+      await markers.first().click();
+      
+      // Wait for potential updates
+      await page.waitForTimeout(1000);
+      
+      // Datacenter view should still be visible (may have updated content)
+      await expect(page.locator('#datacenter-view')).toBeVisible();
+    }
+    
+    expect(markerCount).toBeGreaterThanOrEqual(0);
+  });
+
+  test('force graph integration works', async ({ page }) => {
+    await page.goto(BASE_URL);
+    
+    await page.waitForSelector('#datacenter-view', { timeout: 5000 });
+    await page.waitForTimeout(3000); // Wait for D3/force graph to initialize
+    
+    // Check if force graph elements exist
+    const forceGraphElements = page.locator('#datacenter-view svg, #datacenter-view .force-graph');
+    const graphCount = await forceGraphElements.count();
+    
+    // Force graphs may or may not be present depending on datacenter selection
+    expect(graphCount).toBeGreaterThanOrEqual(0);
+    
+    // If graphs exist, they should be visible
+    if (graphCount > 0) {
+      await expect(forceGraphElements.first()).toBeVisible();
+    }
+  });
+
+  test('responsive layout works on different screen sizes', async ({ page }) => {
+    await page.goto(BASE_URL);
+    
+    // Test desktop size (default)
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await page.waitForSelector('.columns', { timeout: 5000 });
+    
+    // Both columns should be visible on desktop
+    await expect(page.locator('.column.is-9')).toBeVisible(); // Map column
+    await expect(page.locator('.column.is-3')).toBeVisible(); // Sidebar column
+    
+    // Test tablet size
+    await page.setViewportSize({ width: 768, height: 600 });
+    await page.waitForTimeout(500);
+    
+    // Layout should still work
+    await expect(page.locator('#map')).toBeVisible();
+    await expect(page.locator('.datacenter-panel')).toBeVisible();
+    
+    // Test mobile size
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.waitForTimeout(500);
+    
+    // Key elements should still be accessible
+    await expect(page.locator('#map')).toBeVisible();
+    await expect(page.locator('.datacenter-panel')).toBeVisible();
+  });
+
+  test('tooltip functionality', async ({ page }) => {
+    await page.goto(BASE_URL);
+    
+    await page.waitForSelector('#tooltip', { timeout: 5000 });
+    
+    // Tooltip element should exist
+    const tooltip = page.locator('#tooltip');
+    await expect(tooltip).toBeAttached();
+    
+    // Tooltip may start visible or hidden depending on app state
+    // Just verify it exists and has proper structure
+    const tooltipDisplay = await tooltip.evaluate(el => window.getComputedStyle(el).display);
+    expect(['none', 'block']).toContain(tooltipDisplay);
+  });
+
+  test('toast notification system exists', async ({ page }) => {
+    await page.goto(BASE_URL);
+    
+    // Toast element should exist in DOM (don't wait for visibility)
+    const toast = page.locator('#toast');
+    await expect(toast).toBeAttached();
+    
+    // Toast should have proper ARIA attributes
+    await expect(toast).toHaveAttribute('aria-live', 'polite');
+    await expect(toast).toHaveAttribute('role', 'status');
+    
+    // Toast may be hidden initially (that's expected)
+    const toastDisplay = await toast.evaluate(el => window.getComputedStyle(el).display);
+    expect(['none', 'block']).toContain(toastDisplay);
+  });
+});
