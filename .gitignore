@@ -2,6 +2,7 @@
 summit-connect
 tmp/
 build-errors.log
+test-results/
 
 # Development tools
 
