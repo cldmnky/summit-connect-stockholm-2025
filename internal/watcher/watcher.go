@@ -211,11 +211,8 @@ func (cw *ClusterWatcher) syncExistingVMs() error {
 	for _, vm := range vms.Items {
 		modelVM := cw.convertToModelVM(&vm)
 
-		// Skip stopped VMs - don't add them to the store
-		if modelVM.Status == "stopped" {
-			log.Printf("Skipping stopped VM %s in cluster %s", vm.Name, cw.config.Name)
-			continue
-		}
+		// Include all VMs regardless of status - let frontend handle filtering
+		log.Printf("Syncing VM %s (status: %s) in cluster %s", vm.Name, modelVM.Status, cw.config.Name)
 
 		if err := cw.updateVMInDatabase(modelVM); err != nil {
 			log.Printf("Failed to update VM %s in database: %v", vm.Name, err)
@@ -284,13 +281,8 @@ func (cw *ClusterWatcher) handleVMEvent(event watch.Event) error {
 	case watch.Added, watch.Modified:
 		modelVM := cw.convertToModelVM(vm)
 
-		// If VM is stopped, remove it from the store (if it exists) instead of adding/updating
-		if modelVM.Status == "stopped" {
-			log.Printf("VM %s is stopped, removing from store if present", vm.Name)
-			return cw.removeVMFromDatabase(vm.Name)
-		}
-
-		// Only add/update running VMs
+		// Include all VMs regardless of status - let frontend handle filtering
+		log.Printf("Processing VM %s (status: %s) from cluster %s", vm.Name, modelVM.Status, cw.config.Name)
 		return cw.updateVMInDatabase(modelVM)
 	case watch.Deleted:
 		return cw.removeVMFromDatabase(vm.Name)
