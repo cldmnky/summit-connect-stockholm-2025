@@ -7,6 +7,7 @@ class StockholmDatacentersMap {
         this.markerByDcId = new Map();
         this.migrationAnimations = []; // Track active animations
         this.migrationLines = new Map(); // Track active migration lines
+        this.migrationOverlays = new Map(); // Track migration overlay elements
         this.forceGraphs = new Map(); // Track force-directed graphs for each datacenter
         this.migrations = []; // Track migration data
         this.currentLayer = 'satellite';
@@ -29,6 +30,9 @@ class StockholmDatacentersMap {
         // Load and render migration data
         await this.loadMigrations();
         this.renderMigrationList();
+        
+        // Load and display migration overlays
+        await this.updateMigrationOverlays();
         
         // Clear any leftover migration animations from previous sessions
         this.clearMigrationAnimations();
@@ -124,11 +128,12 @@ class StockholmDatacentersMap {
             imperial: false
         }).addTo(this.map);
         
-        // Add map movement handlers for force graphs
-        this.map.on('zoom viewreset', () => {
+        // Add map movement handlers for force graphs and migration overlays
+        this.map.on('zoom viewreset moveend', () => {
             this.datacenters.forEach(dc => {
                 this.updateForceGraphPosition(dc.id);
             });
+            this.updateMigrationOverlayPositions();
         });
         
         console.log('Map initialized at Stockholm coordinates');
@@ -755,10 +760,11 @@ class StockholmDatacentersMap {
                 }
             }
 
-            // Refresh migration data
+            // Refresh migration data and update overlays
             try {
                 await this.loadMigrations();
                 this.renderMigrationList();
+                await this.updateMigrationOverlays();
             } catch (e) {
                 console.warn('Failed to refresh migration data:', e);
             }
@@ -797,6 +803,9 @@ class StockholmDatacentersMap {
             }
         });
         this.migrationAnimations = [];
+        
+        // Also clear migration overlays
+        this.clearMigrationOverlays();
     }
 
     // Simple migration animation: draw a polyline and move a small marker along it
@@ -1083,14 +1092,200 @@ class StockholmDatacentersMap {
             const activeMigrations = await this.loadActiveMigrations();
             console.log('[DEBUG] Active migrations for animation sync:', activeMigrations.length);
             
-            // Match active migrations with datacenter VMs for better animations
+            // Clear existing migration overlays
+            this.clearMigrationOverlays();
+            
+            // Create migration overlays for active migrations
             activeMigrations.forEach(migration => {
                 if (!migration.completed && migration.phase !== 'Succeeded' && migration.phase !== 'Failed') {
                     this.showMigrationAnimationFromMigrationData(migration, datacenters);
+                    this.createMigrationOverlay(migration, datacenters);
                 }
             });
         } catch (error) {
             console.warn('Failed to sync migration animations:', error);
+        }
+    }
+    
+    // Create migration overlay showing "vm: source → target"
+    createMigrationOverlay(migration, datacenters) {
+        console.log('[DEBUG] Creating migration overlay for:', migration);
+        
+        let sourceDc = null;
+        let targetDc = null;
+        let sourceCluster = migration.sourceCluster;
+        let targetCluster = migration.targetCluster;
+        
+        // Handle cases where sourceCluster is not populated
+        if (!sourceCluster && migration.direction === 'incoming') {
+            // For incoming migrations, try to infer source from available clusters
+            // Find all clusters that are NOT the target cluster
+            const allClusters = [];
+            datacenters.forEach(dc => {
+                if (dc.clusters) {
+                    allClusters.push(...dc.clusters);
+                }
+            });
+            const otherClusters = allClusters.filter(cluster => cluster !== targetCluster);
+            if (otherClusters.length > 0) {
+                sourceCluster = otherClusters[0]; // Use first available cluster as source
+            }
+        }
+        
+        if (!sourceCluster || !targetCluster) {
+            console.warn('Migration missing source or target cluster:', migration);
+            return;
+        }
+        
+        // Find source and target datacenters
+        datacenters.forEach(dc => {
+            if (dc.clusters && dc.clusters.includes(sourceCluster)) {
+                sourceDc = dc;
+            }
+            if (dc.clusters && dc.clusters.includes(targetCluster)) {
+                targetDc = dc;
+            }
+        });
+        
+        if (!sourceDc || !targetDc) {
+            console.warn('Could not find source or target datacenter for migration:', {
+                migration: migration.id,
+                sourceCluster,
+                targetCluster,
+                sourceDc: sourceDc?.name,
+                targetDc: targetDc?.name
+            });
+            return;
+        }
+        
+        // Skip if source and target are the same datacenter
+        if (sourceDc.id === targetDc.id) {
+            console.log('Skipping overlay for same-datacenter migration:', migration.id);
+            return;
+        }
+        
+        // Create overlay key
+        const overlayKey = `${migration.id}-overlay`;
+        
+        // Position overlay in left column (offset from map edge)
+        const mapBounds = this.map.getBounds();
+        const leftEdge = mapBounds.getWest();
+        const topEdge = mapBounds.getNorth();
+        const overlayLat = topEdge - (0.01 * (this.migrationOverlays.size + 1)); // Stack vertically
+        const overlayLng = leftEdge + 0.02; // Offset from left edge
+        
+        // Create migration overlay with VM node styling
+        const migrationOverlay = L.divIcon({
+            className: 'migration-overlay vm-node-styled',
+            html: `
+                <div class="migration-overlay-container">
+                    <div class="migration-vm-icon">🔄</div>
+                    <div class="migration-info">
+                        <div class="migration-vm-name">${migration.vmName}</div>
+                        <div class="migration-path">
+                            <span class="migration-source">${sourceDc.name.replace('Stockholm ', '').replace(' DC', '')}</span>
+                            <span class="migration-arrow">→</span>
+                            <span class="migration-target">${targetDc.name.replace('Stockholm ', '').replace(' DC', '')}</span>
+                        </div>
+                        <div class="migration-phase">${migration.phase}</div>
+                    </div>
+                </div>
+            `,
+            iconSize: [180, 60],
+            iconAnchor: [10, 30]
+        });
+        
+        // Create marker at left column position
+        const overlayMarker = L.marker([overlayLat, overlayLng], {
+            icon: migrationOverlay,
+            interactive: false,
+            zIndexOffset: 1200
+        }).addTo(this.map);
+        
+        // Store overlay for cleanup
+        this.migrationOverlays.set(overlayKey, {
+            marker: overlayMarker,
+            migration: migration,
+            timestamp: Date.now()
+        });
+        
+        console.log(`Created migration overlay for ${migration.vmName}: ${sourceDc.name} → ${targetDc.name} (${migration.phase})`);
+    }
+    
+    // Clear all migration overlays
+    clearMigrationOverlays() {
+        if (this.migrationOverlays) {
+            this.migrationOverlays.forEach((overlay, key) => {
+                try {
+                    this.map.removeLayer(overlay.marker);
+                } catch (e) {
+                    console.warn('Error removing migration overlay:', e);
+                }
+            });
+            this.migrationOverlays.clear();
+        }
+    }
+    
+    // Update migration overlay positions when map moves
+    updateMigrationOverlayPositions() {
+        if (!this.migrationOverlays || this.migrationOverlays.size === 0) return;
+        
+        const mapBounds = this.map.getBounds();
+        const leftEdge = mapBounds.getWest();
+        const topEdge = mapBounds.getNorth();
+        
+        let index = 0;
+        this.migrationOverlays.forEach((overlay, key) => {
+            const overlayLat = topEdge - (0.01 * (index + 1));
+            const overlayLng = leftEdge + 0.02;
+            overlay.marker.setLatLng([overlayLat, overlayLng]);
+            index++;
+        });
+    }
+    async updateMigrationOverlays() {
+        try {
+            const allMigrations = await this.loadAllMigrations();
+            
+            // Clear old overlays
+            this.clearMigrationOverlays();
+            
+            // Only show migrations that are actively migrating (not succeeded or failed)
+            const activeMigrations = allMigrations.filter(migration => {
+                const isActive = !migration.completed && 
+                                migration.phase !== 'Succeeded' && 
+                                migration.phase !== 'Failed' &&
+                                (migration.phase === 'Running' || 
+                                 migration.phase === 'Pending' ||
+                                 migration.phase === 'Scheduling' ||
+                                 migration.phase === 'Scheduled' ||
+                                 migration.phase === 'PreparingTarget' ||
+                                 migration.phase === 'TargetReady');
+                
+                if (isActive) {
+                    console.log('[DEBUG] Including active migration:', migration.vmName, migration.phase);
+                }
+                return isActive;
+            });
+            
+            console.log(`[DEBUG] Showing ${activeMigrations.length} active migration overlays out of ${allMigrations.length} total migrations`);
+            
+            // Create overlays for active migrations
+            activeMigrations.forEach(migration => {
+                this.createMigrationOverlay(migration, this.datacenters);
+            });
+        } catch (error) {
+            console.warn('Failed to update migration overlays:', error);
+        }
+    }
+    
+    async loadAllMigrations() {
+        try {
+            const response = await fetch('/api/v1/migrations');
+            const data = await response.json();
+            return Array.isArray(data) ? data : [];
+        } catch (error) {
+            console.error('Error loading all migrations from API:', error);
+            return [];
         }
     }
     
@@ -1936,9 +2131,15 @@ class StockholmDatacentersMap {
 
     async loadActiveMigrations() {
         try {
-            const response = await fetch('/api/v1/migrations/active');
+            // Fallback: use all migrations endpoint and filter active ones
+            const response = await fetch('/api/v1/migrations');
             const data = await response.json();
-            return Array.isArray(data) ? data : [];
+            const allMigrations = Array.isArray(data) ? data : [];
+            
+            // Filter to get active migrations (not completed)
+            const activeMigrations = allMigrations.filter(migration => !migration.completed);
+            console.log('[DEBUG] Loaded', activeMigrations.length, 'active migrations out of', allMigrations.length, 'total');
+            return activeMigrations;
         } catch (error) {
             console.error('Error loading active migrations from API:', error);
             return [];
@@ -2088,6 +2289,7 @@ class StockholmDatacentersMap {
                 
                 await this.loadMigrations();
                 this.renderMigrationList();
+                await this.updateMigrationOverlays();
                 
                 refreshBtn.textContent = 'Refresh';
                 refreshBtn.disabled = false;

@@ -914,6 +914,98 @@ main {
     }
 }
 
+/* Migration Overlay Styles - VM Node Styled */
+.migration-overlay {
+    pointer-events: none;
+    z-index: 1200;
+}
+
+.migration-overlay-container {
+    background: #ff6b35;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border: 2px solid #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Red Hat Text', Arial, sans-serif;
+    font-size: 12px;
+    animation: migrationPulse 1.5s ease-in-out infinite alternate;
+    max-width: 180px;
+}
+
+.migration-vm-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.migration-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.migration-vm-name {
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 2px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.migration-path {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin: 2px 0;
+    font-size: 10px;
+}
+
+.migration-source, .migration-target {
+    background: rgba(255, 255, 255, 0.25);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 50px;
+}
+
+.migration-arrow {
+    font-size: 12px;
+    font-weight: bold;
+    color: #fbbf24;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.migration-phase {
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.25);
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-top: 2px;
+    text-transform: uppercase;
+    font-weight: 500;
+    text-align: center;
+}
+
+@keyframes migrationPulse {
+    0% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% { 
+        opacity: 0.8;
+        transform: scale(1.02);
+    }
+}
+
 /* Migration Line Styles */
 .migration-line {
     animation: migration-flow 2s ease-in-out infinite;

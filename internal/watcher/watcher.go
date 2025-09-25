@@ -599,7 +599,7 @@ func (cw *ClusterWatcher) convertToModelMigration(migration *kubevirtv1.VirtualM
 	// Detect migration direction based on spec fields
 	direction := "unknown"
 	var sourceCluster, targetCluster string
-	
+
 	// Check for spec.sendTo (indicates this is the source cluster)
 	if migration.Spec.SendTo != nil && migration.Spec.SendTo.ConnectURL != "" {
 		direction = "outgoing"
@@ -608,20 +608,20 @@ func (cw *ClusterWatcher) convertToModelMigration(migration *kubevirtv1.VirtualM
 		if migration.Spec.SendTo.MigrationID != "" {
 			modelMigration.MigrationID = migration.Spec.SendTo.MigrationID
 		}
-		log.Printf("Migration %s: OUTGOING from cluster %s to %s (migrationID: %s)", 
+		log.Printf("Migration %s: OUTGOING from cluster %s to %s (migrationID: %s)",
 			migration.Name, sourceCluster, migration.Spec.SendTo.ConnectURL, modelMigration.MigrationID)
 	}
-	
+
 	// Check for spec.receive (indicates this is the target cluster)
 	if migration.Spec.Receive != nil && migration.Spec.Receive.MigrationID != "" {
 		direction = "incoming"
 		targetCluster = cw.config.Name
 		modelMigration.ReceiveFromID = migration.Spec.Receive.MigrationID
 		modelMigration.MigrationID = migration.Spec.Receive.MigrationID
-		log.Printf("Migration %s: INCOMING to cluster %s (migrationID: %s)", 
+		log.Printf("Migration %s: INCOMING to cluster %s (migrationID: %s)",
 			migration.Name, targetCluster, modelMigration.MigrationID)
 	}
-	
+
 	// Set direction and cluster information
 	modelMigration.Direction = direction
 	modelMigration.SourceCluster = sourceCluster
