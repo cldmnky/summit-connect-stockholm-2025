@@ -187,23 +187,24 @@ class StockholmDatacentersMap {
         }).addTo(this.map);
         
         // Add popup with datacenter information
-        const vmCount = datacenter.vms ? datacenter.vms.length : 0;
-        const runningVMs = datacenter.vms ? datacenter.vms.filter(vm => vm.status === 'running').length : 0;
-        const readyVMs = datacenter.vms ? datacenter.vms.filter(vm => vm.ready === true).length : 0;
+        const vmsList = datacenter.vms || datacenter.VMs || [];
+        const vmCount = vmsList.length;
+        const runningVMs = vmsList.filter(vm => vm.status === 'running' || vm.phase === 'running').length;
+        const readyVMs = vmsList.filter(vm => vm.ready === true).length;
         
         // Generate VM summary for popup
         let vmSummary = '';
-        if (datacenter.vms && datacenter.vms.length > 0) {
-            const firstFewVMs = datacenter.vms.slice(0, 3);
+        if (vmsList.length > 0) {
+            const firstFewVMs = vmsList.slice(0, 3);
             vmSummary = '<div style="margin-top: 8px; font-size: 11px; color: #666;"><strong>VMs:</strong><br/>';
             firstFewVMs.forEach(vm => {
                 const readyIcon = vm.ready === true ? '✓' : vm.ready === false ? '✗' : '?';
                 const nodeInfo = vm.nodeName ? ` @ ${vm.nodeName}` : '';
                 const clusterInfo = vm.cluster ? ` [${vm.cluster}]` : '';
-                vmSummary += `• ${vm.name} (${vm.status}) ${readyIcon}${nodeInfo}${clusterInfo}<br/>`;
+                vmSummary += `• ${vm.name} (${vm.status || vm.phase}) ${readyIcon}${nodeInfo}${clusterInfo}<br/>`;
             });
-            if (datacenter.vms.length > 3) {
-                vmSummary += `• ...and ${datacenter.vms.length - 3} more<br/>`;
+            if (vmsList.length > 3) {
+                vmSummary += `• ...and ${vmsList.length - 3} more<br/>`;
             }
             vmSummary += '</div>';
         }
@@ -253,11 +254,14 @@ class StockholmDatacentersMap {
     flattenVMs() {
         const rows = [];
         this.datacenters.forEach(dc => {
-            const list = dc.vms || []; // Use dc.vms instead of dc.vmsList for new API
-            list.forEach(vm => {
+            // Ensure we're accessing the correct VMs array from API response
+            const vmsList = dc.vms || dc.VMs || [];
+            console.log(`[DEBUG] Flattening VMs for datacenter ${dc.name}: found ${vmsList.length} VMs`);
+            vmsList.forEach(vm => {
                 rows.push(Object.assign({}, vm, { datacenterId: dc.id, datacenterName: dc.name, dcLocation: dc.location }));
             });
         });
+        console.log(`[DEBUG] Total flattened VMs: ${rows.length}`);
         return rows;
     }
 
@@ -269,7 +273,7 @@ class StockholmDatacentersMap {
         }
         container.innerHTML = '';
 
-    let vms = this.flattenVMs();
+        let vms = this.flattenVMs();
 
         // Apply configurable filters
         const filterModeEl = document.getElementById('vm-filter-mode');
@@ -286,8 +290,13 @@ class StockholmDatacentersMap {
 
         // If hiding inactive, filter them out
         if (hideInactive) {
-            const inactiveStatuses = new Set(['stopped', 'stopping', 'terminated', 'shutdown', 'deleted']);
-            vms = vms.filter(vm => !inactiveStatuses.has(String((vm.status || '').toLowerCase())));
+            const inactiveStatuses = new Set(['stopped', 'stopping', 'terminated', 'shutdown', 'deleted', 'failed', 'succeeded']);
+            // Also check both status and phase fields to catch all inactive VMs
+            vms = vms.filter(vm => {
+                const status = String((vm.status || '').toLowerCase());
+                const phase = String((vm.phase || '').toLowerCase());
+                return !inactiveStatuses.has(status) && !inactiveStatuses.has(phase);
+            });
         }
 
         // Mode-based filtering
@@ -413,18 +422,21 @@ class StockholmDatacentersMap {
             // Build maps of vmId -> datacenterId for old and new data
             const oldMap = new Map();
             this.datacenters.forEach(dc => {
-                (dc.vms || []).forEach(vm => oldMap.set(vm.id, dc.id));
+                const vmsList = dc.vms || dc.VMs || [];
+                vmsList.forEach(vm => oldMap.set(vm.id, dc.id));
             });
 
             const newMap = new Map();
             newDCs.forEach(dc => {
-                (dc.vms || []).forEach(vm => newMap.set(vm.id, dc.id));
+                const vmsList = dc.vms || dc.VMs || [];
+                vmsList.forEach(vm => newMap.set(vm.id, dc.id));
             });
 
             // Detect VMs in migration states
             const migratingVMs = [];
             newDCs.forEach(dc => {
-                (dc.vms || []).forEach(vm => {
+                const vmsList = dc.vms || dc.VMs || [];
+                vmsList.forEach(vm => {
                     if (vm.migrationStatus === "migrating" || vm.status === "migrating" || vm.status === "waitingforreceiver") {
                         migratingVMs.push({ vm, dc });
                     }
@@ -480,7 +492,10 @@ class StockholmDatacentersMap {
                 if (fromDcId && fromDcId !== toDcId) {
                     const fromDc = this.datacenters.find(d => d.id === fromDcId);
                     const toDc = newDCs.find(d => d.id === toDcId);
-                    const vm = newDCs.find(d => d.id === toDcId)?.vms?.find(v => v.id === vmId) || null;
+                    // Use consistent VM list access
+                    const targetDc = newDCs.find(d => d.id === toDcId);
+                    const vmsList = targetDc?.vms || targetDc?.VMs || [];
+                    const vm = vmsList.find(v => v.id === vmId) || null;
                     
                     if (fromDc && toDc && vm) {
                         // mark this VM with a migration timestamp so UI can sort by latest migrations
@@ -871,7 +886,8 @@ class StockholmDatacentersMap {
     
     addVMActivityVisualization(datacenter) {
         // Add pulsing circles to represent VM activity
-        const vmCount = datacenter.vms ? datacenter.vms.length : 0;
+        const vmsList = datacenter.vms || datacenter.VMs || [];
+        const vmCount = vmsList.length;
         const capacity = 20; // Assume 20 VM capacity per datacenter
         const vmIntensity = Math.min(vmCount / capacity, 1);
         const numRings = Math.ceil(vmIntensity * 3) || 1; // 1-3 rings based on activity, minimum 1
@@ -912,7 +928,8 @@ class StockholmDatacentersMap {
     
     createForceDirectedGraph(datacenter) {
         // Skip if no VMs
-        if (!datacenter.vms || datacenter.vms.length === 0) {
+        const vmsList = datacenter.vms || datacenter.VMs || [];
+        if (vmsList.length === 0) {
             return;
         }
         
@@ -979,7 +996,7 @@ class StockholmDatacentersMap {
         const links = [];
         
         // Add VM nodes
-        datacenter.vms.forEach(vm => {
+        vmsList.forEach(vm => {
             const vmId = `vm-${datacenter.id}-${vm.id}`;
             nodes.push({
                 id: vmId,
@@ -1161,7 +1178,8 @@ class StockholmDatacentersMap {
 
     createAllForceGraphs() {
         this.datacenters.forEach(datacenter => {
-            if (datacenter.vms && datacenter.vms.length > 0) {
+            const vmsList = datacenter.vms || datacenter.VMs || [];
+            if (vmsList.length > 0) {
                 this.createForceDirectedGraph(datacenter);
             }
         });
@@ -1171,7 +1189,8 @@ class StockholmDatacentersMap {
         // Update all force graphs with current VM data
         // Only recreate if VM data has changed
         this.datacenters.forEach(datacenter => {
-            if (datacenter.vms && datacenter.vms.length > 0) {
+            const vmsList = datacenter.vms || datacenter.VMs || [];
+            if (vmsList.length > 0) {
                 const existingGraph = this.forceGraphs.get(datacenter.id);
                 
                 // Check if we need to recreate the graph
@@ -1202,7 +1221,8 @@ class StockholmDatacentersMap {
 
     hasVMDataChanged(datacenter, existingGraph) {
         // Check if VM count changed
-        const currentVMCount = datacenter.vms ? datacenter.vms.length : 0;
+        const vmsList = datacenter.vms || datacenter.VMs || [];
+        const currentVMCount = vmsList.length;
         const existingVMCount = existingGraph.nodes.filter(n => n.type === 'vm').length;
         
         if (currentVMCount !== existingVMCount) {
@@ -1210,7 +1230,7 @@ class StockholmDatacentersMap {
         }
         
         // Check if VM IDs changed
-        const currentVMIds = new Set(datacenter.vms.map(vm => vm.id));
+        const currentVMIds = new Set(vmsList.map(vm => vm.id));
         const existingVMIds = new Set(existingGraph.nodes.filter(n => n.type === 'vm').map(n => n.vm.id));
         
         if (currentVMIds.size !== existingVMIds.size) {
@@ -1224,7 +1244,7 @@ class StockholmDatacentersMap {
         }
         
         // Check if VM status changed (for color updates)
-        for (let vm of datacenter.vms) {
+        for (let vm of vmsList) {
             const existingNode = existingGraph.nodes.find(n => n.type === 'vm' && n.vm.id === vm.id);
             if (existingNode && (
                 existingNode.vm.ready !== vm.ready ||
@@ -1502,7 +1522,10 @@ class StockholmDatacentersMap {
     
     updateStats() {
         console.log('updateStats called, datacenters:', this.datacenters);
-        const totalVMs = this.datacenters.reduce((sum, dc) => sum + (dc.vms ? dc.vms.length : 0), 0);
+        const totalVMs = this.datacenters.reduce((sum, dc) => {
+            const vmsList = dc.vms || dc.VMs || [];
+            return sum + vmsList.length;
+        }, 0);
         const activeDatacenters = this.datacenters.length; // All datacenters are considered active in the new API
         
         console.log('Total VMs calculated:', totalVMs, 'Active datacenters:', activeDatacenters);
@@ -1525,7 +1548,8 @@ class StockholmDatacentersMap {
         setInterval(() => {
             this.datacenters.forEach(datacenter => {
                 // Only show activity if datacenter has VMs
-                if (datacenter.vms && datacenter.vms.length > 0) {
+                const vmsList = datacenter.vms || datacenter.VMs || [];
+                if (vmsList.length > 0) {
                     this.addVMActivityVisualization(datacenter);
                 }
             });
