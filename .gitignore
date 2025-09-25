@@ -49,4 +49,7 @@ go.work
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.dbsummit-connect-stockholm-2025
+Thumbs.db
+
+# Binary names (including project-specific ones)
+summit-connect-stockholm-2025
