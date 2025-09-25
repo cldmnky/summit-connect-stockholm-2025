@@ -50,6 +50,8 @@ datacenters:
     clusters:
     - name: vulcan
       kubeconfig: ../.kubeconfigs/vulcan.yaml # Relative to the config file
+    - name: borg
+      kubeconfig: ../.kubeconfigs/borg.yaml # Relative to the config file
     #vms:
     #  - id: rhel9-silver-giraffe-21
     #    name: rhel9-silver-giraffe-21
