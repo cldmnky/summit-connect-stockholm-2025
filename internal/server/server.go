@@ -210,6 +210,7 @@ func StartBackendServer(port int) {
 	api.Get("/migrations/datacenter/:dcId", getMigrationsByDatacenter)
 	api.Get("/migrations/vm/:vmName", getMigrationsByVM)
 	api.Get("/migrations/active", getActiveMigrations)
+	api.Get("/migrations/direction/:direction", getMigrationsByDirection) // New endpoint for direction-based queries
 
 	// Status endpoint
 	api.Get("/status", getStatus)
@@ -402,7 +403,24 @@ func getStatus(c *fiber.Ctx) error {
 // Migration API handlers
 
 func getAllMigrations(c *fiber.Ctx) error {
-	migrations, err := dataStore.GetAllMigrations()
+	// Check if direction query parameter is provided
+	direction := c.Query("direction")
+	
+	var migrations []models.Migration
+	var err error
+	
+	if direction != "" {
+		// Validate direction parameter
+		if direction != "incoming" && direction != "outgoing" && direction != "unknown" {
+			return c.Status(400).JSON(fiber.Map{
+				"error": "invalid direction query parameter - must be 'incoming', 'outgoing', or 'unknown'",
+			})
+		}
+		migrations, err = dataStore.GetMigrationsByDirection(direction)
+	} else {
+		migrations, err = dataStore.GetAllMigrations()
+	}
+	
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -441,6 +459,23 @@ func getMigrationsByVM(c *fiber.Ctx) error {
 
 func getActiveMigrations(c *fiber.Ctx) error {
 	migrations, err := dataStore.GetActiveMigrations()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(migrations)
+}
+
+func getMigrationsByDirection(c *fiber.Ctx) error {
+	direction := c.Params("direction")
+	
+	// Validate direction parameter
+	if direction != "incoming" && direction != "outgoing" && direction != "unknown" {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "invalid direction - must be 'incoming', 'outgoing', or 'unknown'",
+		})
+	}
+	
+	migrations, err := dataStore.GetMigrationsByDirection(direction)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

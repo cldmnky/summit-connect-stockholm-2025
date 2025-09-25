@@ -816,3 +816,29 @@ func (ds *DataStore) RemoveMigration(migrationID string) error {
 		return b.Delete([]byte(migrationID))
 	})
 }
+
+// GetMigrationsByDirection retrieves migrations filtered by direction (incoming/outgoing/unknown)
+func (ds *DataStore) GetMigrationsByDirection(direction string) ([]models.Migration, error) {
+	var migrations []models.Migration
+
+	err := ds.db.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(migrationsBucket))
+		if b == nil {
+			return fmt.Errorf("migrations bucket not found")
+		}
+
+		return b.ForEach(func(k, v []byte) error {
+			var migration models.Migration
+			if err := json.Unmarshal(v, &migration); err != nil {
+				log.Printf("Failed to unmarshal migration %s: %v", string(k), err)
+				return nil // Continue to next migration
+			}
+			if migration.Direction == direction {
+				migrations = append(migrations, migration)
+			}
+			return nil
+		})
+	})
+
+	return migrations, err
+}

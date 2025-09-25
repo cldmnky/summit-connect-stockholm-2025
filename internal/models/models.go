@@ -63,6 +63,9 @@ type Migration struct {
 	Cluster          string                `json:"cluster"`          // Cluster where migration is happening
 	DatacenterID     string                `json:"datacenterId"`     // Datacenter ID
 	Phase            string                `json:"phase"`            // Current phase (Pending, Running, Succeeded, Failed)
+	Direction        string                `json:"direction"`        // Migration direction: "outgoing" (source), "incoming" (target), "unknown"
+	SourceCluster    string                `json:"sourceCluster"`    // Source cluster name (derived from migration direction)
+	TargetCluster    string                `json:"targetCluster"`    // Target cluster name (derived from migration direction)  
 	SourceNode       string                `json:"sourceNode"`       // Source node name
 	TargetNode       string                `json:"targetNode"`       // Target node name
 	SourcePod        string                `json:"sourcePod"`        // Source pod name
@@ -74,6 +77,10 @@ type Migration struct {
 	UpdatedAt        time.Time             `json:"updatedAt"`        // Last update time
 	Completed        bool                  `json:"completed"`        // Whether migration is completed
 	Labels           map[string]string     `json:"labels,omitempty"` // Migration labels (plan, migration ID, etc.)
+	// Migration coordination fields
+	SendToURL        string                `json:"sendToUrl,omitempty"`        // spec.sendTo.connectURL (source cluster)
+	ReceiveFromID    string                `json:"receiveFromId,omitempty"`    // spec.receive.migrationID (target cluster)
+	MigrationID      string                `json:"migrationId,omitempty"`      // Forklift migration ID for correlation
 }
 
 // MigrationTransition represents a phase transition in a migration

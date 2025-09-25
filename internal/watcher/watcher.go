@@ -596,10 +596,41 @@ func (cw *ClusterWatcher) convertToModelMigration(migration *kubevirtv1.VirtualM
 		Labels:       migration.Labels,
 	}
 
+	// Detect migration direction based on spec fields
+	direction := "unknown"
+	var sourceCluster, targetCluster string
+	
+	// Check for spec.sendTo (indicates this is the source cluster)
+	if migration.Spec.SendTo != nil && migration.Spec.SendTo.ConnectURL != "" {
+		direction = "outgoing"
+		sourceCluster = cw.config.Name
+		modelMigration.SendToURL = migration.Spec.SendTo.ConnectURL
+		if migration.Spec.SendTo.MigrationID != "" {
+			modelMigration.MigrationID = migration.Spec.SendTo.MigrationID
+		}
+		log.Printf("Migration %s: OUTGOING from cluster %s to %s (migrationID: %s)", 
+			migration.Name, sourceCluster, migration.Spec.SendTo.ConnectURL, modelMigration.MigrationID)
+	}
+	
+	// Check for spec.receive (indicates this is the target cluster)
+	if migration.Spec.Receive != nil && migration.Spec.Receive.MigrationID != "" {
+		direction = "incoming"
+		targetCluster = cw.config.Name
+		modelMigration.ReceiveFromID = migration.Spec.Receive.MigrationID
+		modelMigration.MigrationID = migration.Spec.Receive.MigrationID
+		log.Printf("Migration %s: INCOMING to cluster %s (migrationID: %s)", 
+			migration.Name, targetCluster, modelMigration.MigrationID)
+	}
+	
+	// Set direction and cluster information
+	modelMigration.Direction = direction
+	modelMigration.SourceCluster = sourceCluster
+	modelMigration.TargetCluster = targetCluster
+
 	// Check for special conditions that indicate migration state
 	phase := string(migration.Status.Phase)
 	completed := false
-	
+
 	// Check conditions for failure/abort states
 	for _, condition := range migration.Status.Conditions {
 		switch condition.Type {
@@ -710,17 +741,17 @@ func (cw *ClusterWatcher) updateMigrationInDatabase(migration *models.Migration)
 func (cw *ClusterWatcher) updateVMByMigration(migration *models.Migration) error {
 	// Find the VM in our datacenter - we need to iterate through all VMs to find the right one
 	// Since there's no direct GetVM method, we'll try to update the VM by getting all VMs first
-	
+
 	dcID := cw.config.DatacenterID
-	
+
 	// For now, let's use a simpler approach and just log that we detected a migration
 	// We'll update this when we need the VM migration status tracking
-	log.Printf("Detected migration event for VM %s in datacenter %s (phase: %s)", 
+	log.Printf("Detected migration event for VM %s in datacenter %s (phase: %s)",
 		migration.VMName, dcID, migration.Phase)
-	
+
 	// The migration tracking is already working through the migration records
 	// VM status will be updated when the VM itself is updated by the VM watcher
-	
+
 	return nil
 }
 
