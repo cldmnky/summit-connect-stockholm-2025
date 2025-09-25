@@ -13,12 +13,17 @@ body {
     padding: 0;
 }
 
-.container {
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
+/* App-specific container to avoid Bulma .container breakpoint limits */
+.app-container {
+    width: 100%;
+    max-width: min(2600px, 98vw); /* use nearly full viewport on very wide monitors */
+    margin: 0 auto; /* center on wide screens */
+    padding: 18px 28px;
     background: #ffffff;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    min-height: 100vh; /* allow content to grow if needed */
+    overflow: visible; /* let child panels handle overflow */
+    transition: max-width 240ms ease, padding 240ms ease;
 }
 
 /* Add Red Hat-style header */
@@ -47,28 +52,30 @@ body {
 
 header {
     text-align: left;
-    margin: 24px 24px 16px 24px;
+    margin: 16px 20px 12px 20px;
     color: #151515;
     background: transparent;
 }
 
 header h1 {
-    font-size: 28px;
-    margin-bottom: 8px;
+    font-size: 24px;
+    margin-bottom: 4px;
     text-shadow: none;
     font-weight: 500;
     color: #151515;
 }
 
 header p {
-    font-size: 14px;
+    font-size: 13px;
     opacity: 0.7;
     color: #6a6e73;
 }
 
 main {
-    padding: 0 24px 24px 24px;
+    padding: 0 8px 16px 8px;
     background: #ffffff;
+    /* Use flexible columns on wide screens so the map can expand */
+    display: block;
 }
 
 .map-container {
@@ -79,27 +86,33 @@ main {
     border: 1px solid #d2d2d2;
     position: relative;
     overflow: hidden;
+    /* allow the map container to grow within a flex column; use max-height to avoid viewport overflow */
+    max-height: calc(100vh - 160px);
+    height: 100%;
 }
 
 /* Make map larger and fill available space */
 #map {
     width: 100%;
-    height: calc(100vh - 200px);
+    /* Fill the map-container's height rather than forcing absolute viewport calc */
+    height: 100%;
+    min-height: 480px; /* keep a decent minimum */
     border-radius: 8px;
     z-index: 1;
 }
 
 .legend {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 12px;
+    right: 12px;
     background: rgba(255,255,255,0.98);
-    padding: 16px;
+    padding: 12px;
     border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.15);
     border: 1px solid rgba(210,210,210,0.8);
     z-index: 1000;
     font-family: 'Red Hat Text', Arial, sans-serif;
+    font-size: 12px;
 }
 
 /* Overlay panels on top of the map */
@@ -120,6 +133,7 @@ main {
     border: 1px solid rgba(210,210,210,0.8);
 }
 
+
 .overlay .box h3 {
     color: #151515;
     font-weight: 600;
@@ -129,9 +143,9 @@ main {
     padding-bottom: 8px;
 }
 
-.overlay-top-left { top: 16px; left: 16px; max-width: 320px; }
-.overlay-bottom-left { bottom: 90px; left: 16px; max-width: 400px; max-height: 500px; overflow: auto; }
-.overlay-top-right { top: 16px; right: 16px; max-width: 300px; }
+.overlay-top-left { top: 12px; left: 12px; max-width: 280px; }
+.overlay-bottom-left { bottom: 80px; left: 12px; max-width: 420px; max-height: 420px; overflow: auto; }
+.overlay-top-right { top: 12px; right: 12px; max-width: 260px; }
 
 .overlay { z-index: 1400; }
 
@@ -215,10 +229,10 @@ main {
 
 .map-controls {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
+    bottom: 12px;
+    left: 12px;
     display: flex;
-    gap: 8px;
+    gap: 6px;
     z-index: 1000;
 }
 
@@ -784,29 +798,119 @@ main {
 
 @media (max-width: 768px) {
     .container {
-        padding: 10px;
+        padding: 0;
+    }
+    
+    header {
+        margin: 8px 12px 6px 12px;
     }
     
     header h1 {
-        font-size: 2rem;
+        font-size: 18px;
+    }
+    
+    main {
+        padding: 0 8px 8px 8px;
+        height: calc(100vh - 80px);
     }
     
     .map-container {
-        padding: 15px;
+        padding: 0;
     }
     
     #map {
-        height: 400px;
+        height: 40vh;
+    }
+    
+    .datacenter-panel {
+        height: calc(60vh - 80px);
+        padding: 12px;
     }
     
     .legend {
-        top: 20px;
-        right: 20px;
-        padding: 10px;
+        top: 8px;
+        right: 8px;
+        padding: 8px;
+        font-size: 11px;
     }
     
-    .stats {
-        grid-template-columns: 1fr;
+    .overlay-bottom-left {
+        max-width: calc(100vw - 40px);
+        bottom: 60px;
+        left: 8px;
+    }
+    
+    .columns[style*="margin: 0"] {
+        margin: 0 !important;
+    }
+    
+    .column[style*="padding: 0"] {
+        padding: 0 !important;
+    }
+}
+
+/* Large-screen tweaks: allow the layout to expand and give the map/panels more height */
+@media (min-width: 1400px) {
+    .container {
+        max-width: 2200px;
+        padding: 18px 28px;
+    }
+
+    /* slightly reduce header footprint and give map more vertical room on very wide screens */
+    main {
+        height: calc(100vh - 120px);
+    }
+
+    #map {
+        height: calc(100vh - 120px);
+    }
+
+    .datacenter-panel {
+        height: calc(100vh - 120px);
+    }
+}
+
+/* Two-column layout on very wide screens */
+@media (min-width: 1200px) {
+    /* Use Bulma's .columns as the flex container so inner .column widths behave correctly */
+    .columns {
+        display: flex;
+        gap: 24px;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    /* Make the main content column expand to fill available space */
+    .columns > .column.is-9 {
+        flex: 1 1 auto; /* make left column very flexible */
+        min-width: 0; /* allow children to shrink properly */
+    }
+
+    /* Keep the right panel a fixed-ish column */
+    .columns > .column.is-3 {
+        flex: 0 0 360px; /* slightly wider panel on large screens */
+    }
+
+    .map-container {
+        max-height: calc(100vh - 160px);
+    }
+
+    /* ultra-wide adjustments for very large monitors (>=2000px) */
+    @media (min-width: 2000px) {
+        .container { max-width: 98vw; padding: 20px 36px; }
+        .columns > .column.is-3 { flex: 0 0 380px; }
+        #map { min-height: 760px; }
+    }
+
+    .datacenter-panel {
+        max-height: calc(100vh - 160px);
+        overflow-y: auto;
+        height: 100%;
+    }
+
+    /* Ensure overlays position correctly inside map when it's flexible */
+    #map {
+        min-height: 640px;
     }
 }
 
@@ -911,5 +1015,297 @@ main {
     100% {
         r: 8;
         fill-opacity: 0.7;
+    }
+}
+
+/* Datacenter Panel Styles */
+.datacenter-panel {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid #d2d2d2;
+    height: calc(100vh - 120px);
+    overflow-y: auto;
+}
+
+.datacenter-panel .title {
+    color: #151515;
+    margin-bottom: 12px;
+    font-weight: 600;
+    border-bottom: 2px solid #e5e5e5;
+    padding-bottom: 6px;
+    font-size: 18px;
+}
+
+.vm-list-panel {
+    margin-top: 12px;
+}
+
+.vm-list-panel .vm-list {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    border: 1px solid #f1f5f9;
+}
+
+.vm-list-panel .vm-list-rows {
+    max-height: 320px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.datacenter-view {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6a6e73;
+    font-style: italic;
+}
+
+.datacenter-card {
+    background: #f8f9fa;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.datacenter-card.selected {
+    border-color: #0066cc;
+    background: #f0f7ff;
+    box-shadow: 0 2px 8px rgba(0,102,204,0.1);
+}
+
+.datacenter-header {
+    display: flex;
+    align-items: center;
+    justify-content: between;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+.datacenter-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #151515;
+    margin: 0;
+    flex: 1;
+}
+
+.datacenter-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #6a6e73;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #28a745;
+}
+
+.datacenter-meta {
+    font-size: 12px;
+    color: #6a6e73;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.clusters-section {
+    margin-top: 8px;
+}
+
+.clusters-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #151515;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cluster-card {
+    background: #ffffff;
+    border: 1px solid #d2d2d2;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+
+.cluster-card:hover {
+    border-color: #0066cc;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,102,204,0.1);
+}
+
+.cluster-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.cluster-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #151515;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cluster-name::before {
+    content: "⚙️";
+    font-size: 12px;
+}
+
+.vm-count-badge {
+    background: #0066cc;
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.cluster-vms {
+    margin-top: 8px;
+}
+
+.vm-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    background: #f8f9fa;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.vm-item:hover {
+    background: #e9ecef;
+    border-color: #0066cc;
+}
+
+.vm-item.migrating {
+    border-left: 3px solid #0ea5a4;
+    background: linear-gradient(90deg, rgba(14, 165, 164, 0.1) 0%, rgba(248, 249, 250, 1) 20%);
+}
+
+.vm-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.vm-name {
+    font-weight: 600;
+    color: #151515;
+}
+
+.vm-details {
+    color: #6a6e73;
+    font-size: 11px;
+}
+
+.vm-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+}
+
+.vm-status-icon {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.vm-status-icon.running {
+    background: #28a745;
+}
+
+.vm-status-icon.stopped {
+    background: #dc3545;
+}
+
+.vm-status-icon.migrating {
+    background: #0ea5a4;
+    animation: pulse 1.5s infinite;
+}
+
+.vm-status-icon.starting {
+    background: #ffc107;
+}
+
+.expand-toggle {
+    background: none;
+    border: none;
+    color: #6a6e73;
+    cursor: pointer;
+    font-size: 16px;
+    transition: transform 0.2s ease;
+    padding: 4px;
+}
+
+.expand-toggle.expanded {
+    transform: rotate(90deg);
+}
+
+.cluster-vms.collapsed {
+    display: none;
+}
+
+.no-vms {
+    color: #6a6e73;
+    font-style: italic;
+    font-size: 11px;
+    text-align: center;
+    padding: 8px;
+}
+
+@media (max-width: 1024px) {
+    .columns {
+        flex-direction: column;
+    }
+    
+    .datacenter-panel {
+        height: 50vh;
+        max-height: 50vh;
+    }
+    
+    #map {
+        height: 50vh;
+    }
+    
+    main {
+        height: calc(100vh - 100px);
+        padding: 0 12px 12px 12px;
+    }
+    
+    header {
+        margin: 12px 16px 8px 16px;
+    }
+    
+    header h1 {
+        font-size: 20px;
     }
 }

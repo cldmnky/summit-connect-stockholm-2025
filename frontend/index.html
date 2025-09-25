@@ -16,16 +16,16 @@
 
 <body>
     <section class="section">
-        <div class="container">
+        <div class="container app-container">
             <header class="has-text-centered">
                 <h1 class="title is-3">Stockholm County Datacenters</h1>
                 <p class="subtitle is-6">Interactive map showing datacenter locations and VM distribution</p>
             </header>
 
             <main>
-                <div class="columns">
-                    <div class="column is-full">
-                        <div class="map-container box">
+                <div class="columns" style="margin: 0;">
+                    <div class="column is-9" style="padding: 0 8px 0 0;">
+                        <div class="map-container box" style="margin: 0;">
                             <div id="map"></div>
                             <div class="legend">
                                 <div class="legend-item">
@@ -42,27 +42,7 @@
                                 <button id="center-map" class="map-control-btn">Center Map</button>
                             </div>
 
-                            <!-- Overlay panels -->
-                            <div class="overlay overlay-bottom-left" id="global-vm-list">
-                                <div class="box vm-list">
-                                    <div style="display:flex; align-items:center; justify-content:space-between;">
-                                        <h3 class="title is-6" style="margin:0;">Active VMs</h3>
-                                        <div style="display:flex; gap:8px; align-items:center;">
-                                            <label style="font-size:12px; color:#666;">Show:</label>
-                                            <select id="vm-filter-mode" style="font-size:12px; padding:4px;">
-                                                <option value="all">All VMs</option>
-                                                <option value="migrating">Only Migrating</option>
-                                            </select>
-                                            <label style="font-size:12px; color:#666; display:flex; align-items:center; gap:6px;">
-                                                <input type="checkbox" id="vm-hide-inactive" checked /> Hide inactive
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="vm-list-rows" id="vm-list-rows">
-                                        <!-- VM rows populated by app.js -->
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- (Active VMs moved to the right column) -->
 
                             <div class="overlay overlay-top-right" id="stats-panel">
                                 <div class="box stats">
@@ -75,6 +55,39 @@
                                             <span class="stat-value" id="active-datacenters">2</span>
                                             <div class="stat-label">Active Datacenters</div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-3" style="padding: 0 0 0 8px;">
+                        <div class="datacenter-panel box" style="margin: 0;">
+                            <h3 class="title is-5">Datacenter Overview</h3>
+                            <div id="datacenter-view" class="datacenter-view">
+                                <div class="empty-state">
+                                    <p>Select a datacenter on the map to view details</p>
+                                </div>
+                            </div>
+
+                            <hr />
+
+                            <div class="vm-list-panel">
+                                <h4 class="title is-6">Active VMs</h4>
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                                    <div style="display:flex; gap:8px; align-items:center;">
+                                        <label style="font-size:12px; color:#666;">Show:</label>
+                                        <select id="vm-filter-mode" style="font-size:12px; padding:4px;">
+                                            <option value="all">All VMs</option>
+                                            <option value="migrating">Only Migrating</option>
+                                        </select>
+                                    </div>
+                                    <label style="font-size:12px; color:#666; display:flex; align-items:center; gap:6px;">
+                                        <input type="checkbox" id="vm-hide-inactive" checked /> Hide inactive
+                                    </label>
+                                </div>
+                                <div class="vm-list">
+                                    <div class="vm-list-rows" id="vm-list-rows">
+                                        <!-- VM rows populated by app.js -->
                                     </div>
                                 </div>
                             </div>
