@@ -1,14 +1,18 @@
 package server
 
 import (
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
 	"github.com/cldmnky/summit-connect-stockholm-2025/internal/data"
@@ -18,6 +22,12 @@ import (
 
 var dataStore *data.DataStore
 var vmWatcher *watcher.VMWatcher
+var embeddedFrontend *embed.FS
+
+// SetEmbeddedFrontend sets the embedded frontend filesystem
+func SetEmbeddedFrontend(fs *embed.FS) {
+	embeddedFrontend = fs
+}
 
 // InitDataStore initializes the package-level datastore. Call this before StartBackendServer.
 func InitDataStore(dbPath string, seedPath string) error {
@@ -79,6 +89,11 @@ func InitVMWatcher(configPath string) error {
 
 // StartBackendServer starts the Fiber backend API server
 func StartBackendServer(port int) {
+	StartBackendServerWithFS(port, embeddedFrontend)
+}
+
+// StartBackendServerWithFS starts the Fiber backend API server with optional embedded filesystem
+func StartBackendServerWithFS(port int, frontendFS *embed.FS) {
 	app := fiber.New(fiber.Config{
 		AppName: "Summit Connect Stockholm 2025 API",
 	})
@@ -91,14 +106,39 @@ func StartBackendServer(port int) {
 		AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
 	}))
 
-	// Get current working directory
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("Could not get working directory:", err)
-	}
+	// Health check
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status":  "healthy",
+			"service": "backend-api",
+		})
+	})
 
-	// Frontend path (static files will be served after API routes are defined)
-	frontendPath := filepath.Join(wd, "frontend")
+	// Serve frontend static files after API routes to avoid route conflicts
+	if frontendFS != nil {
+		// Use embedded filesystem
+		frontendSubFS, err := fs.Sub(*frontendFS, "frontend")
+		if err != nil {
+			log.Fatal("Failed to create sub filesystem:", err)
+		}
+		app.Use("/", filesystem.New(filesystem.Config{
+			Root:       http.FS(frontendSubFS),
+			PathPrefix: "",
+			Browse:     false,
+		}))
+		log.Printf("Backend API server starting on port %d", port)
+		log.Printf("Also serving embedded frontend files")
+	} else {
+		// Fallback to filesystem path
+		wd, err := os.Getwd()
+		if err != nil {
+			log.Fatal("Could not get working directory:", err)
+		}
+		frontendPath := filepath.Join(wd, "frontend")
+		app.Static("/", frontendPath)
+		log.Printf("Backend API server starting on port %d", port)
+		log.Printf("Also serving frontend static files from %s", frontendPath)
+	}
 
 	// API routes
 	api := app.Group("/api/v1")
@@ -224,10 +264,31 @@ func StartBackendServer(port int) {
 	})
 
 	// Serve frontend static files after API routes to avoid route conflicts
-	app.Static("/", frontendPath)
+	if frontendFS != nil {
+		// Use embedded filesystem
+		frontendSubFS, err := fs.Sub(*frontendFS, "frontend")
+		if err != nil {
+			log.Fatal("Failed to create sub filesystem:", err)
+		}
+		app.Use("/", filesystem.New(filesystem.Config{
+			Root:       http.FS(frontendSubFS),
+			PathPrefix: "",
+			Browse:     false,
+		}))
+		log.Printf("Backend API server starting on port %d", port)
+		log.Printf("Also serving embedded frontend files")
+	} else {
+		// Fallback to filesystem path
+		wd, err := os.Getwd()
+		if err != nil {
+			log.Fatal("Could not get working directory:", err)
+		}
+		frontendPath := filepath.Join(wd, "frontend")
+		app.Static("/", frontendPath)
+		log.Printf("Backend API server starting on port %d", port)
+		log.Printf("Also serving frontend static files from %s", frontendPath)
+	}
 
-	log.Printf("Backend API server starting on port %d", port)
-	log.Printf("Also serving frontend static files from %s", frontendPath)
 	log.Fatal(app.Listen(fmt.Sprintf(":%d", port)))
 }
 
