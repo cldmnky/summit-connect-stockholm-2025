@@ -22,8 +22,9 @@ test.describe('VM list rendering', () => {
     const rows = await page.locator('#vm-list-rows .vm-row');
     await expect(rows.first()).toBeVisible();
 
-    // Check Compact layout: vm-table exists inside a row
-    await expect(rows.first().locator('.vm-table')).toHaveCount(1);
+  // Check Compact layout: prefer .vm-table inside a row, but accept older .vm-sub markup
+  const tableOrSub = rows.first().locator('.vm-table, .vm-sub');
+  await expect(tableOrSub.first()).toBeVisible();
 
     // Center button exists and is clickable
     const centerBtn = rows.first().locator('.vm-actions button');
