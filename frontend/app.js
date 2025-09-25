@@ -187,57 +187,9 @@ class StockholmDatacentersMap {
             icon: datacenterIcon
         }).addTo(this.map);
         
-        // Add popup with datacenter information
-        const vmsList = datacenter.vms || datacenter.VMs || [];
-        const vmCount = vmsList.length;
-        const runningVMs = vmsList.filter(vm => vm.status === 'running' || vm.phase === 'running').length;
-        const readyVMs = vmsList.filter(vm => vm.ready === true).length;
-        
-        // Generate VM summary for popup
-        let vmSummary = '';
-        if (vmsList.length > 0) {
-            const firstFewVMs = vmsList.slice(0, 3);
-            vmSummary = '<div style="margin-top: 8px; font-size: 11px; color: #666;"><strong>VMs:</strong><br/>';
-            firstFewVMs.forEach(vm => {
-                const readyIcon = vm.ready === true ? '✓' : vm.ready === false ? '✗' : '?';
-                const nodeInfo = vm.nodeName ? ` @ ${vm.nodeName}` : '';
-                const clusterInfo = vm.cluster ? ` [${vm.cluster}]` : '';
-                vmSummary += `• ${vm.name} (${vm.status || vm.phase}) ${readyIcon}${nodeInfo}${clusterInfo}<br/>`;
-            });
-            if (vmsList.length > 3) {
-                vmSummary += `• ...and ${vmsList.length - 3} more<br/>`;
-            }
-            vmSummary += '</div>';
-        }
-        
-        const popupContent = `
-            <div style="min-width: 220px;">
-                <h3 style="margin: 0 0 10px 0; color: #333;">${datacenter.name}</h3>
-                <div style="line-height: 1.6;">
-                    <strong>📍 Location:</strong> ${datacenter.location}<br/>
-                    <strong>💻 VMs:</strong> ${vmCount} (${runningVMs} running, ${readyVMs} ready)<br/>
-                    <strong>⚡ Status:</strong> <span style="color: #28a745; font-weight: bold;">ACTIVE</span><br/>
-                </div>
-                ${vmSummary}
-            </div>
-        `;
-        
-        marker.bindPopup(popupContent);
-        
-        // Add click event for info panel
-        // Track popup open/close so we can restore it across refreshes
-        marker.on('popupopen', () => {
-            this.currentPopupDcId = datacenter.id;
-            this.showDatacenterInfo(datacenter);
-            this.renderGlobalVMList(datacenter.id);
-            this.renderDatacenterView(datacenter.id); // Update datacenter view
-        });
-        marker.on('popupclose', () => {
-            if (this.currentPopupDcId === datacenter.id) this.currentPopupDcId = null;
-        });
-
+        // Add click event for datacenter view panel (no popup)
         marker.on('click', () => {
-            // clicking marker opens popup; ensure info panel updates
+            this.currentPopupDcId = datacenter.id;
             this.showDatacenterInfo(datacenter);
             this.renderGlobalVMList(datacenter.id);
             this.renderDatacenterView(datacenter.id); // Update datacenter view
@@ -596,12 +548,8 @@ class StockholmDatacentersMap {
         if (datacenter && this.map) {
             this.map.setView([datacenter.coordinates[0], datacenter.coordinates[1]], 14, { animate: true });
             
-            // Open the marker popup
-            const marker = this.markerByDcId.get(datacenterId);
-            if (marker) {
-                marker.openPopup();
-            }
-            
+            // Update the current selection and render the datacenter view
+            this.currentPopupDcId = datacenterId;
             this.renderDatacenterView(datacenterId);
         }
     }
@@ -765,20 +713,16 @@ class StockholmDatacentersMap {
             console.log('[DEBUG] Updated datacenters, new VM count:', this.flattenVMs().length);
 
             // Refresh markers: remove and recreate (but keep force graphs)
-            // Preserve currently open popup so we can restore it after refresh
-            const openDcId = this.currentPopupDcId;
+            // Preserve currently selected datacenter for the datacenter view
+            const selectedDcId = this.currentPopupDcId;
             this.clearMarkers(false); // Don't clear force graphs
             // Re-add markers without changing map view (avoid fitBounds on refresh)
             this.addDatacenters(false);
 
-            // If a popup was open before refresh, attempt to reopen it
-            if (openDcId) {
-                setTimeout(() => {
-                    const m = this.markerByDcId.get(openDcId) || this.markerByDcId.get(String(openDcId)) || this.markerByDcId.get(Number(openDcId));
-                    if (m) {
-                        try { m.openPopup(); } catch (e) { /* ignore */ }
-                    }
-                }, 50);
+            // Restore datacenter view selection if one was active
+            if (selectedDcId) {
+                this.currentPopupDcId = selectedDcId; // Keep the selection
+                this.renderDatacenterView(selectedDcId);
             }
 
             console.log('[DEBUG] Refreshing UI lists/stats...');
