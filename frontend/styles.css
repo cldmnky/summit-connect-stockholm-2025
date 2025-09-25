@@ -883,9 +883,11 @@ main {
 }
 
 .force-graph .vm-link {
-    stroke: #999;
-    stroke-opacity: 0.3;
-    stroke-width: 1px;
+    stroke: #ff4d4f; /* red links for migrations/edges */
+    stroke-opacity: 0.95; /* make links highly visible */
+    stroke-width: 2px; /* thicker lines */
+    stroke-linecap: round;
+    mix-blend-mode: multiply; /* helps visibility against bright tiles */
 }
 
 .force-graph .vm-label {

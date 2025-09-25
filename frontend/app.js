@@ -11,6 +11,7 @@ class StockholmDatacentersMap {
         this.currentLayer = 'satellite';
         this.layers = {};
         
+        this.currentPopupDcId = null; // track which datacenter popup is open
         this.init();
     }
     
@@ -110,8 +111,6 @@ class StockholmDatacentersMap {
         // Add default layer (satellite)
         this.layers.satellite.addTo(this.map);
 
-        // Setup migration controls after layers are available
-        this.setupMigrationControls();
         
         // Add scale control
         L.control.scale({
@@ -129,13 +128,13 @@ class StockholmDatacentersMap {
         console.log('Map initialized at Stockholm coordinates');
     }
     
-    addDatacenters() {
+    addDatacenters(fitBounds = true) {
         this.datacenters.forEach(dc => {
             this.createDatacenterMarker(dc);
         });
-        
-        // Fit map to show all datacenters with some padding
-        if (this.markers.length > 0) {
+
+        // Fit map to show all datacenters with some padding (optional)
+        if (fitBounds && this.markers.length > 0) {
             const group = new L.featureGroup(this.markers);
             this.map.fitBounds(group.getBounds().pad(0.2));
         }
@@ -218,19 +217,25 @@ class StockholmDatacentersMap {
                     <strong>⚡ Status:</strong> <span style="color: #28a745; font-weight: bold;">ACTIVE</span><br/>
                 </div>
                 ${vmSummary}
-                <button onclick="app.showDatacenterDetails('${datacenter.id}')" 
-                        style="margin-top: 10px; padding: 5px 10px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    View Details
-                </button>
             </div>
         `;
         
         marker.bindPopup(popupContent);
         
         // Add click event for info panel
-        marker.on('click', () => {
+        // Track popup open/close so we can restore it across refreshes
+        marker.on('popupopen', () => {
+            this.currentPopupDcId = datacenter.id;
             this.showDatacenterInfo(datacenter);
-            // highlight or refresh VM list to focus on this datacenter
+            this.renderGlobalVMList(datacenter.id);
+        });
+        marker.on('popupclose', () => {
+            if (this.currentPopupDcId === datacenter.id) this.currentPopupDcId = null;
+        });
+
+        marker.on('click', () => {
+            // clicking marker opens popup; ensure info panel updates
+            this.showDatacenterInfo(datacenter);
             this.renderGlobalVMList(datacenter.id);
         });
         
@@ -258,10 +263,38 @@ class StockholmDatacentersMap {
 
     renderGlobalVMList(focusDatacenterId = null) {
         const container = document.getElementById('vm-list-rows');
-        if (!container) return;
+        if (!container) {
+            console.warn('[DEBUG] VM list container not found!');
+            return;
+        }
         container.innerHTML = '';
 
-        let vms = this.flattenVMs();
+    let vms = this.flattenVMs();
+
+        // Apply configurable filters
+        const filterModeEl = document.getElementById('vm-filter-mode');
+        const hideInactiveEl = document.getElementById('vm-hide-inactive');
+
+        // Load saved preferences if controls aren't present yet
+        const savedMode = localStorage.getItem('vmFilterMode');
+        const savedHide = localStorage.getItem('vmHideInactive');
+        if (filterModeEl && savedMode) filterModeEl.value = savedMode;
+        if (hideInactiveEl && savedHide !== null) hideInactiveEl.checked = savedHide === 'true';
+
+        const mode = (filterModeEl && filterModeEl.value) || savedMode || 'all';
+        const hideInactive = (hideInactiveEl && hideInactiveEl.checked) || (savedHide === 'true');
+
+        // If hiding inactive, filter them out
+        if (hideInactive) {
+            const inactiveStatuses = new Set(['stopped', 'stopping', 'terminated', 'shutdown', 'deleted']);
+            vms = vms.filter(vm => !inactiveStatuses.has(String((vm.status || '').toLowerCase())));
+        }
+
+        // Mode-based filtering
+        if (mode === 'migrating') {
+            vms = vms.filter(vm => vm.migrationStatus === 'migrating' || vm.status === 'migrating' || vm.status === 'waitingforreceiver');
+        }
+        console.log('[DEBUG] renderGlobalVMList called with', vms.length, 'VMs');
 
         // Sort by latest migration timestamp first. If no _lastMigratedAt, keep existing order.
         vms = vms.sort((a, b) => {
@@ -365,6 +398,7 @@ class StockholmDatacentersMap {
 
     async fetchAndMergeDatacenters() {
         try {
+            console.log('[DEBUG] Starting fetchAndMergeDatacenters...');
             // Clear any leftover migration animations before refresh
             this.clearMigrationAnimations();
             
@@ -372,6 +406,9 @@ class StockholmDatacentersMap {
             if (!resp.ok) throw new Error('Failed to fetch datacenters from API');
             const data = await resp.json();
             const newDCs = data.datacenters || [];
+
+            console.log('[DEBUG] Fetched data:', newDCs.length, 'datacenters');
+            console.log('[DEBUG] Current VMs before update:', this.flattenVMs().length);
 
             // Build maps of vmId -> datacenterId for old and new data
             const oldMap = new Map();
@@ -444,6 +481,7 @@ class StockholmDatacentersMap {
                     const fromDc = this.datacenters.find(d => d.id === fromDcId);
                     const toDc = newDCs.find(d => d.id === toDcId);
                     const vm = newDCs.find(d => d.id === toDcId)?.vms?.find(v => v.id === vmId) || null;
+                    
                     if (fromDc && toDc && vm) {
                         // mark this VM with a migration timestamp so UI can sort by latest migrations
                         try { vm._lastMigratedAt = Date.now(); } catch (e) { /* ignore */ }
@@ -452,8 +490,13 @@ class StockholmDatacentersMap {
                         // Remove migration line for completed migration
                         this.removeMigrationLineForVM(vm.id);
                         
-                        // Show completion notification
-                        this.showMigrationNotification(`VM ${vm.name} migrated from ${fromDc.name} to ${toDc.name}`, vm);
+                        // Show completion notification with null checks
+                        const fromName = fromDc?.name || 'Unknown DC';
+                        const toName = toDc?.name || 'Unknown DC';
+                        const vmName = vm?.name || 'Unknown VM';
+                        this.showMigrationNotification(`VM ${vmName} migrated from ${fromName} to ${toName}`, vm);
+                    } else {
+                        console.warn('Migration detected but missing data:', { fromDc: !!fromDc, toDc: !!toDc, vm: !!vm, fromDcId, toDcId, vmId });
                     }
                 }
             });
@@ -461,41 +504,70 @@ class StockholmDatacentersMap {
             // Replace local datacenters with the fresh data (keep structure)
             this.datacenters = newDCs;
 
-            // Refresh markers: remove and recreate (but keep force graphs)
-            this.clearMarkers(false); // Don't clear force graphs
-            this.addDatacenters();
+            console.log('[DEBUG] Updated datacenters, new VM count:', this.flattenVMs().length);
 
+            // Refresh markers: remove and recreate (but keep force graphs)
+            // Preserve currently open popup so we can restore it after refresh
+            const openDcId = this.currentPopupDcId;
+            this.clearMarkers(false); // Don't clear force graphs
+            // Re-add markers without changing map view (avoid fitBounds on refresh)
+            this.addDatacenters(false);
+
+            // If a popup was open before refresh, attempt to reopen it
+            if (openDcId) {
+                setTimeout(() => {
+                    const m = this.markerByDcId.get(openDcId) || this.markerByDcId.get(String(openDcId)) || this.markerByDcId.get(Number(openDcId));
+                    if (m) {
+                        try { m.openPopup(); } catch (e) { /* ignore */ }
+                    }
+                }, 50);
+            }
+
+            console.log('[DEBUG] Refreshing UI lists/stats...');
             // Refresh UI lists/stats
             this.updateStats();
             this.renderGlobalVMList();
             
+            console.log('[DEBUG] Updating force graphs...');
             // Update force-directed graphs smartly (only if data changed)
             this.updateForceGraphs();
 
-            // Play migration animations
+            // Play migration animations (guarded)
             if (migrations.length > 0) {
-                console.log('Detected migrations:', migrations.map(m => ({ vmId: m.vm.id, from: m.fromDc.name, to: m.toDc.name })));
-                // show a short toast for the first migration to give user feedback
-                try {
-                    const toastEl = document.getElementById('toast');
-                    if (toastEl) {
-                        const first = migrations[0];
-                        toastEl.textContent = `Migration: ${first.vm.id} → ${first.fromDc.name} → ${first.toDc.name}`;
-                        toastEl.style.display = 'block';
-                        clearTimeout(toastEl._t);
-                        toastEl._t = setTimeout(() => toastEl.style.display = 'none', 2200);
-                    }
-                } catch (e) { /* ignore toast errors */ }
+                const validMigrations = migrations.filter(m => m && m.vm && m.fromDc && m.toDc);
+                if (validMigrations.length > 0) {
+                    console.log('Detected migrations:', validMigrations.map(m => ({ vmId: m.vm?.id || 'unknown', from: m.fromDc?.name || 'unknown', to: m.toDc?.name || 'unknown' })));
+                    try {
+                        const toastEl = document.getElementById('toast');
+                        if (toastEl) {
+                            const first = validMigrations[0];
+                            toastEl.textContent = `Migration: ${first.vm.id} → ${first.fromDc.name} → ${first.toDc.name}`;
+                            toastEl.style.display = 'block';
+                            clearTimeout(toastEl._t);
+                            toastEl._t = setTimeout(() => toastEl.style.display = 'none', 2200);
+                        }
+                    } catch (e) { /* ignore toast errors */ }
 
-                migrations.forEach(mig => {
-                    try { this.animateMigration(mig.fromDc, mig.toDc, mig.vm); } catch (e) { console.warn('animateMigration failed', e); }
-                });
-            } else {
-                // no migrations detected
-                // console.debug('No migrations in this refresh');
+                    validMigrations.forEach(mig => {
+                        try { this.animateMigration(mig.fromDc, mig.toDc, mig.vm); } catch (e) { console.warn('animateMigration failed', e); }
+                    });
+                } else {
+                    console.warn('Migrations detected but no valid entries to animate', migrations);
+                }
             }
         } catch (err) {
-            console.warn('Auto-refresh failed:', err.message || err);
+            console.error('Auto-refresh failed:', err.message || err);
+            // Even if processing failed, attempt to refresh UI lists/stats to keep the view current
+            try {
+                this.updateStats();
+            } catch (e) {
+                console.warn('Failed to update stats after refresh error:', e);
+            }
+            try {
+                this.renderGlobalVMList();
+            } catch (e) {
+                console.warn('Failed to refresh global VM list after refresh error:', e);
+            }
         }
     }
 
@@ -600,7 +672,7 @@ class StockholmDatacentersMap {
                 pointer-events: none;
             `;
             document.body.appendChild(notificationContainer);
-        }
+            }
         
         // Create notification toast
         const notification = document.createElement('div');
@@ -882,7 +954,14 @@ class StockholmDatacentersMap {
         
         let g = svg.select('g');
         if (g.empty()) {
-            g = svg.append('g');
+            g = svg.append('g').attr('class', 'force-graph');
+        } else {
+            // ensure existing group has the expected class so CSS rules apply
+            g.attr('class', (d, i, nodes) => {
+                const existing = nodes && nodes[0] && nodes[0].getAttribute && nodes[0].getAttribute('class');
+                if (existing && existing.indexOf('force-graph') !== -1) return existing;
+                return (existing ? existing + ' ' : '') + 'force-graph';
+            });
         }
         
         // Prepare data
@@ -931,9 +1010,20 @@ class StockholmDatacentersMap {
             .data(links)
             .enter().append('line')
             .attr('class', `link-${datacenter.id} vm-link`)
-            .attr('stroke', '#999')
-            .attr('stroke-opacity', 0.3)
-            .attr('stroke-width', 1);
+            .attr('stroke', '#ff4d4f')
+            .attr('stroke-opacity', 0.95)
+            .attr('stroke-width', 2)
+            .attr('stroke-linecap', 'round');
+
+        // ensure links are rendered beneath nodes by moving each line to be the group's first child
+        try {
+            link.each(function() {
+                const p = this.parentNode;
+                if (p && p.firstChild !== this) p.insertBefore(this, p.firstChild);
+            });
+        } catch (e) {
+            // ignore if DOM manipulation fails in some environments
+        }
             
         // Create VM nodes
         const node = g.selectAll(`.node-${datacenter.id}`)
@@ -1239,6 +1329,22 @@ class StockholmDatacentersMap {
             this.testForceGraphs();
         });
 
+        // VM list filter controls
+        const vmFilterMode = document.getElementById('vm-filter-mode');
+        const vmHideInactive = document.getElementById('vm-hide-inactive');
+        if (vmFilterMode) {
+            vmFilterMode.addEventListener('change', () => {
+                localStorage.setItem('vmFilterMode', vmFilterMode.value);
+                this.renderGlobalVMList();
+            });
+        }
+        if (vmHideInactive) {
+            vmHideInactive.addEventListener('change', () => {
+                localStorage.setItem('vmHideInactive', vmHideInactive.checked ? 'true' : 'false');
+                this.renderGlobalVMList();
+            });
+        }
+
         // Add test function to window for demo purposes
         const self = this;
         window.testMigrationNotification = function() {
@@ -1393,14 +1499,6 @@ class StockholmDatacentersMap {
         `;
     }
     
-    showDatacenterDetails(id) {
-        const datacenter = this.datacenters.find(dc => dc.id === id);
-        if (datacenter) {
-            this.showDatacenterInfo(datacenter);
-            // Close popup
-            this.map.closePopup();
-        }
-    }
     
     updateStats() {
         console.log('updateStats called, datacenters:', this.datacenters);
@@ -1434,112 +1532,6 @@ class StockholmDatacentersMap {
         }, 3000); // Show activity every 3 seconds
     }
 
-    setupMigrationControls() {
-        const triggerBtn = document.getElementById('trigger-migrate');
-        const demoBtn = document.getElementById('demo-migrate');
-        const liveToggle = document.getElementById('live-migrations-toggle');
-        const toastEl = document.getElementById('toast');
-
-        const serverBase = '';
-
-        let demoIntervalId = null;
-
-        function showToast(msg, ms = 2500) {
-            if (!toastEl) return;
-            toastEl.textContent = msg;
-            toastEl.style.display = 'block';
-            clearTimeout(toastEl._t);
-            toastEl._t = setTimeout(() => toastEl.style.display = 'none', ms);
-        }
-
-        triggerBtn.addEventListener('click', async () => {
-            try {
-                const useLive = liveToggle && liveToggle.checked;
-                const url = `${serverBase}/api/v1/migrate${useLive ? '' : '?dry-run=1'}`;
-                const res = await fetch(url);
-                const json = await res.json();
-                if (json.ok) {
-                    showToast(json.migrated ? `Migrated ${json.vmId}${useLive ? '' : ' (dry-run)'}` : `No migration: ${json.reason}`);
-
-                    // If server reports a migration but we're in dry-run (server didn't mutate file),
-                    // animate it client-side using the reported from/to and local vm info.
-                    if (json.migrated && !useLive) {
-                        try {
-                            const fromId = json.from;
-                            const toId = json.to;
-                            const fromDc = this.datacenters.find(d => d.id === fromId);
-                            const toDc = this.datacenters.find(d => d.id === toId);
-                            let vm = null;
-                            if (fromDc) vm = (fromDc.vms || []).find(v => v.id === json.vmId) || null;
-                            if (!vm && toDc) vm = (toDc.vms || []).find(v => v.id === json.vmId) || null;
-                            if (fromDc && toDc) {
-                                this.animateMigration(fromDc, toDc, vm || { vmId: json.vmId });
-                            }
-                        } catch (e) {
-                            console.warn('Failed to animate reported dry-run migration', e);
-                        }
-                    }
-
-                    // refresh local data (in case server actually applied changes or for status update)
-                    await this.fetchAndMergeDatacenters();
-                } else {
-                    showToast('Migration failed');
-                }
-            } catch (err) {
-                showToast('Error contacting migration server');
-                console.warn(err);
-            }
-        });
-
-        demoBtn.addEventListener('click', async () => {
-            // Demo runs in dry-run mode by default to avoid mutating the backend datastore
-            if (demoIntervalId) {
-                clearInterval(demoIntervalId);
-                demoIntervalId = null;
-                demoBtn.textContent = 'Start Demo Migrations';
-                showToast('Demo stopped (dry-run)');
-                return;
-            }
-
-            demoBtn.textContent = 'Stop Demo Migrations';
-            showToast('Starting demo migrations (dry-run)');
-
-            demoIntervalId = setInterval(async () => {
-                try {
-                    const useLive = liveToggle && liveToggle.checked;
-                    const url = `${serverBase}/api/v1/migrate${useLive ? '' : '?dry-run=1'}`;
-                    const res = await fetch(url);
-                    const json = await res.json();
-                    if (json.ok) {
-                        showToast(json.migrated ? `Migrated ${json.vmId}${useLive ? '' : ' (dry-run)'}` : `No migration`, 1200);
-
-                        // If dry-run, animate the migration based on server response so user sees it
-                        if (json.migrated && !useLive) {
-                            try {
-                                const fromId = json.from;
-                                const toId = json.to;
-                                const fromDc = this.datacenters.find(d => d.id === fromId);
-                                const toDc = this.datacenters.find(d => d.id === toId);
-                                let vm = null;
-                                if (fromDc) vm = (fromDc.vms || []).find(v => v.id === json.vmId) || null;
-                                if (!vm && toDc) vm = (toDc.vms || []).find(v => v.id === json.vmId) || null;
-                                if (fromDc && toDc) {
-                                    this.animateMigration(fromDc, toDc, vm || { vmId: json.vmId });
-                                }
-                            } catch (e) {
-                                console.warn('Failed to animate reported dry-run migration', e);
-                            }
-                        }
-
-                        // fetch fresh data
-                        await this.fetchAndMergeDatacenters();
-                    }
-                } catch (err) {
-                    console.warn('Demo migration error', err);
-                }
-            }, 2500);
-        });
-    }
 }
 
 // Global variable for popup button access
