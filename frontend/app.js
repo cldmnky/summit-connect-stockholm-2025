@@ -383,12 +383,6 @@ class StockholmDatacentersMap {
 
         // If no datacenter is selected, show all datacenters
         if (!selectedDatacenterId) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <p>Click on a datacenter marker to view details</p>
-                </div>
-            `;
-            
             // Show all datacenters in a summary view
             this.datacenters.forEach(dc => {
                 const dcCard = this.createDatacenterCard(dc, false);
@@ -648,8 +642,12 @@ class StockholmDatacentersMap {
                 vmsList.forEach(vm => newMap.set(vm.id, dc.id));
             });
 
-            // Detect VMs in migration states
+            // Detect VMs in migration states and sync with migration API
             const migratingVMs = [];
+            
+            // Enhanced migration detection using both VM status and migration API data
+            await this.syncMigrationAnimations(newDCs);
+            
             newDCs.forEach(dc => {
                 const vmsList = dc.vms || dc.VMs || [];
                 vmsList.forEach(vm => {
@@ -659,37 +657,10 @@ class StockholmDatacentersMap {
                 });
             });
 
-            // Show migration notifications for active migrations
+            // Show migration notifications for active migrations using migration API data
             if (migratingVMs.length > 0) {
                 migratingVMs.forEach(({ vm, dc }) => {
-                    // Check if we have migration source/target information
-                    if (vm.migrationSource && vm.migrationTarget) {
-                        const sourceDc = newDCs.find(d => d.clusters && d.clusters.includes(vm.migrationSource));
-                        const targetDc = newDCs.find(d => d.clusters && d.clusters.includes(vm.migrationTarget));
-                        
-                        if (sourceDc && targetDc) {
-                            this.showMigrationNotification(vm, sourceDc, targetDc);
-                            this.drawMigrationLine(sourceDc, targetDc, vm);
-                            return;
-                        }
-                    }
-                    
-                    // Fallback: determine direction based on migration status
-                    // In most cases during migration, the VM appears in the source datacenter
-                    // until the migration completes
-                    const currentDc = dc;
-                    const otherDc = newDCs.find(d => d.id !== dc.id);
-                    
-                    if (!otherDc) {
-                        // Only one datacenter, show status without direction
-                        console.log(`VM ${vm.name} is ${vm.status} in ${currentDc.name}`);
-                        return;
-                    }
-                    
-                    // For both states, assume current DC is source and other is target
-                    // This is the most common scenario in live migrations
-                    this.showMigrationNotification(vm, currentDc, otherDc);
-                    this.drawMigrationLine(currentDc, otherDc, vm);
+                    this.showMigrationAnimationFromAPI(vm, dc);
                 });
             }
 
@@ -1103,6 +1074,174 @@ class StockholmDatacentersMap {
             this.removeMigrationLine(from, to, id);
             console.log(`Removed migration line for VM ${id} (migration completed)`);
         });
+    }
+    
+    // Enhanced migration animation sync using migration API
+    async syncMigrationAnimations(datacenters) {
+        try {
+            // Load active migrations from the API
+            const activeMigrations = await this.loadActiveMigrations();
+            console.log('[DEBUG] Active migrations for animation sync:', activeMigrations.length);
+            
+            // Match active migrations with datacenter VMs for better animations
+            activeMigrations.forEach(migration => {
+                if (!migration.completed && migration.phase !== 'Succeeded' && migration.phase !== 'Failed') {
+                    this.showMigrationAnimationFromMigrationData(migration, datacenters);
+                }
+            });
+        } catch (error) {
+            console.warn('Failed to sync migration animations:', error);
+        }
+    }
+    
+    // Show migration animation using migration API data
+    showMigrationAnimationFromAPI(vm, currentDc) {
+        // Find matching migration data from API
+        const matchingMigration = this.migrations.find(m => 
+            m.vmId === vm.id || m.vmName === vm.name
+        );
+        
+        if (matchingMigration && matchingMigration.sourceNode && matchingMigration.targetNode) {
+            // Use migration API data for more accurate animations
+            this.showMigrationAnimationFromMigrationData(matchingMigration, this.datacenters);
+        } else {
+            // Fallback to existing logic
+            const otherDc = this.datacenters.find(d => d.id !== currentDc.id);
+            if (otherDc) {
+                this.showMigrationNotification(vm, currentDc, otherDc);
+                this.drawMigrationLine(currentDc, otherDc, vm);
+            }
+        }
+    }
+    
+    // Show migration animation using migration API data directly
+    showMigrationAnimationFromMigrationData(migration, datacenters) {
+        if (!migration.sourceNode || !migration.targetNode) return;
+        
+        // Find datacenters based on node information
+        let sourceDc = null;
+        let targetDc = null;
+        
+        // Try to match by cluster information from nodes
+        datacenters.forEach(dc => {
+            const vmsList = dc.vms || dc.VMs || [];
+            vmsList.forEach(vm => {
+                if (vm.nodeName === migration.sourceNode) {
+                    sourceDc = dc;
+                }
+                if (vm.nodeName === migration.targetNode) {
+                    targetDc = dc;
+                }
+            });
+        });
+        
+        // If we can't find exact matches, use datacenterId from migration
+        if (!sourceDc && migration.datacenterId) {
+            sourceDc = datacenters.find(dc => dc.id === migration.datacenterId);
+        }
+        
+        if (!targetDc) {
+            // Find the other datacenter as target
+            targetDc = datacenters.find(dc => dc.id !== migration.datacenterId);
+        }
+        
+        if (sourceDc && targetDc && sourceDc.id !== targetDc.id) {
+            const vm = {
+                id: migration.vmId,
+                name: migration.vmName,
+                migrationStatus: 'migrating'
+            };
+            
+            // Enhanced migration notification with more details
+            this.showEnhancedMigrationNotification(vm, sourceDc, targetDc, migration);
+            this.drawMigrationLine(sourceDc, targetDc, vm);
+            
+            console.log(`[MIGRATION] Showing animation for ${migration.vmName}: ${sourceDc.name} → ${targetDc.name} (${migration.phase})`);
+        }
+    }
+    
+    // Enhanced migration notification with migration API details
+    showEnhancedMigrationNotification(vm, fromDatacenter, toDatacenter, migrationData = null) {
+        const phaseInfo = migrationData ? ` (${migrationData.phase})` : '';
+        const timeInfo = migrationData && migrationData.startTime ? 
+            ` • Started ${this.formatTimeAgo(migrationData.startTime)}` : '';
+        
+        const message = `VM ${vm.name || vm.vmId}${phaseInfo} is migrating from ${fromDatacenter.name} to ${toDatacenter.name}${timeInfo}`;
+        
+        // Create or get the notification container
+        let notificationContainer = document.getElementById('notification-container');
+        if (!notificationContainer) {
+            notificationContainer = document.createElement('div');
+            notificationContainer.id = 'notification-container';
+            notificationContainer.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 10000;
+                pointer-events: none;
+            `;
+            document.body.appendChild(notificationContainer);
+        }
+        
+        // Create notification toast with enhanced styling
+        const notification = document.createElement('div');
+        notification.className = 'toast migration enhanced';
+        notification.style.cssText = `
+            margin-bottom: 10px;
+            pointer-events: auto;
+            max-width: 400px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        `;
+        
+        const phaseIcon = this.getMigrationPhaseIcon(migrationData?.phase);
+        
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="font-size: 20px;">${phaseIcon}</div>
+                <div>
+                    <strong>Migration ${migrationData?.phase || 'In Progress'}</strong><br>
+                    <span style="font-size: 0.9em; opacity: 0.95;">${vm.name || vm.vmId}</span><br>
+                    <span style="font-size: 0.8em; opacity: 0.8;">${fromDatacenter.name} → ${toDatacenter.name}${timeInfo}</span>
+                </div>
+            </div>
+        `;
+        
+        // Add to container
+        notificationContainer.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateX(0)';
+        }, 50);
+        
+        // Remove after delay
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 6000);
+    }
+    
+    // Get appropriate icon for migration phase
+    getMigrationPhaseIcon(phase) {
+        const icons = {
+            'Pending': '⏳',
+            'Scheduling': '📋',
+            'Scheduled': '📅', 
+            'PreparingTarget': '🔧',
+            'TargetReady': '✅',
+            'Running': '🚀',
+            'Succeeded': '✅',
+            'Failed': '❌'
+        };
+        return icons[phase] || '🔄';
     }
     
     addVMActivityVisualization(datacenter) {
