@@ -33,13 +33,14 @@ type VMWatcher struct {
 
 // ClusterWatcher watches VMs in a specific cluster
 type ClusterWatcher struct {
-	config         ClusterConfig
-	k8sClient      kubernetes.Interface
-	kubevirtClient kubecli.KubevirtClient
-	dataStore      *data.DataStore
-	vmWatcher      watch.Interface
-	ctx            context.Context
-	cancel         context.CancelFunc
+	config           ClusterConfig
+	k8sClient        kubernetes.Interface
+	kubevirtClient   kubecli.KubevirtClient
+	dataStore        *data.DataStore
+	vmWatcher        watch.Interface
+	migrationWatcher watch.Interface
+	ctx              context.Context
+	cancel           context.CancelFunc
 }
 
 // NewVMWatcher creates a new VM watcher
@@ -185,8 +186,18 @@ func (cw *ClusterWatcher) start() error {
 		log.Printf("Failed to sync existing VMs for cluster %s: %v", cw.config.Name, err)
 	}
 
-	// Start watching for changes
-	return cw.watchVMs()
+	// Initial sync - get all existing migrations
+	if err := cw.syncExistingMigrations(); err != nil {
+		log.Printf("Failed to sync existing migrations for cluster %s: %v", cw.config.Name, err)
+	}
+
+	// Start watching for VM changes
+	go cw.watchVMs()
+
+	// Start watching for migration changes
+	go cw.watchMigrations()
+
+	return nil
 }
 
 // stop stops the cluster watcher
@@ -194,6 +205,9 @@ func (cw *ClusterWatcher) stop() {
 	cw.cancel()
 	if cw.vmWatcher != nil {
 		cw.vmWatcher.Stop()
+	}
+	if cw.migrationWatcher != nil {
+		cw.migrationWatcher.Stop()
 	}
 }
 
@@ -268,6 +282,76 @@ func (cw *ClusterWatcher) watchVMs() error {
 	}
 }
 
+// syncExistingMigrations fetches all existing migrations and updates the database
+func (cw *ClusterWatcher) syncExistingMigrations() error {
+	log.Printf("Syncing existing migrations for cluster %s", cw.config.Name)
+
+	migrations, err := cw.kubevirtClient.VirtualMachineInstanceMigration("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list migrations: %w", err)
+	}
+
+	log.Printf("Found %d migrations in cluster %s", len(migrations.Items), cw.config.Name)
+
+	for _, migration := range migrations.Items {
+		modelMigration := cw.convertToModelMigration(&migration)
+
+		log.Printf("Syncing migration %s (phase: %s) in cluster %s", migration.Name, modelMigration.Phase, cw.config.Name)
+
+		if err := cw.updateMigrationInDatabase(modelMigration); err != nil {
+			log.Printf("Failed to update migration %s in database: %v", migration.Name, err)
+		}
+	}
+
+	return nil
+}
+
+// watchMigrations sets up a watch for migration changes
+func (cw *ClusterWatcher) watchMigrations() error {
+	log.Printf("Starting migration watch for cluster %s", cw.config.Name)
+
+	for {
+		select {
+		case <-cw.ctx.Done():
+			log.Printf("Migration watcher for cluster %s stopped", cw.config.Name)
+			return nil
+		default:
+		}
+
+		// Create a watcher for VirtualMachineInstanceMigration resources
+		watcher, err := cw.kubevirtClient.VirtualMachineInstanceMigration("").Watch(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			log.Printf("Failed to create migration watcher for cluster %s: %v", cw.config.Name, err)
+			time.Sleep(30 * time.Second)
+			continue
+		}
+
+		cw.migrationWatcher = watcher
+
+		// Process events in a loop
+	eventLoop:
+		for {
+			select {
+			case <-cw.ctx.Done():
+				log.Printf("Migration watcher for cluster %s stopped", cw.config.Name)
+				watcher.Stop()
+				return nil
+			case event, ok := <-watcher.ResultChan():
+				if !ok {
+					log.Printf("Migration watcher channel closed for cluster %s, restarting...", cw.config.Name)
+					watcher.Stop()
+					time.Sleep(5 * time.Second)
+					break eventLoop
+				}
+
+				if err := cw.handleMigrationEvent(event); err != nil {
+					log.Printf("Failed to handle migration event for cluster %s: %v", cw.config.Name, err)
+				}
+			}
+		}
+	}
+}
+
 // handleVMEvent processes a VM watch event
 func (cw *ClusterWatcher) handleVMEvent(event watch.Event) error {
 	vm, ok := event.Object.(*kubevirtv1.VirtualMachine)
@@ -330,11 +414,15 @@ func (cw *ClusterWatcher) convertToModelVM(vm *kubevirtv1.VirtualMachine) *model
 			modelVM.Phase = "Migrating"
 			modelVM.Ready = true // VM is still accessible during migration
 			modelVM.MigrationStatus = "migrating"
+			// Try to get more detailed migration info
+			cw.enrichVMWithMigrationInfo(modelVM)
 		case kubevirtv1.VirtualMachineStatusWaitingForReceiver:
 			modelVM.Status = "waitingforreceiver"
 			modelVM.Phase = "WaitingForReceiver"
 			modelVM.Ready = true // VM is still accessible during migration
 			modelVM.MigrationStatus = "migrating"
+			// Try to get more detailed migration info
+			cw.enrichVMWithMigrationInfo(modelVM)
 		default:
 			modelVM.Status = strings.ToLower(string(vm.Status.PrintableStatus))
 			modelVM.Phase = string(vm.Status.PrintableStatus)
@@ -453,5 +541,162 @@ func (cw *ClusterWatcher) removeVMFromDatabase(vmName string) error {
 	}
 
 	log.Printf("Removed VM %s from datacenter %s", vmName, cw.config.DatacenterID)
+	return nil
+}
+
+// enrichVMWithMigrationInfo adds migration-specific information to the VM model
+func (cw *ClusterWatcher) enrichVMWithMigrationInfo(modelVM *models.VM) {
+	// Try to find an active migration for this VM
+	migrations, err := cw.dataStore.GetMigrationsByVM(modelVM.Name)
+	if err != nil {
+		log.Printf("Failed to get migrations for VM %s: %v", modelVM.Name, err)
+		return
+	}
+
+	// Find the most recent active migration
+	var activeMigration *models.Migration
+	for i := range migrations {
+		migration := &migrations[i]
+		if !migration.Completed && (activeMigration == nil || migration.CreatedAt.After(activeMigration.CreatedAt)) {
+			activeMigration = migration
+		}
+	}
+
+	if activeMigration != nil {
+		// Update VM with migration details
+		modelVM.MigrationSource = activeMigration.SourceNode
+		modelVM.MigrationTarget = activeMigration.TargetNode
+		if activeMigration.Phase == "Succeeded" || activeMigration.Phase == "Failed" {
+			if activeMigration.Phase == "Succeeded" {
+				modelVM.MigrationStatus = "completed"
+			} else {
+				modelVM.MigrationStatus = "failed"
+			}
+		}
+	}
+}
+
+// Migration event handling methods
+
+// handleMigrationEvent processes a migration watch event
+func (cw *ClusterWatcher) handleMigrationEvent(event watch.Event) error {
+	migration, ok := event.Object.(*kubevirtv1.VirtualMachineInstanceMigration)
+	if !ok {
+		return fmt.Errorf("unexpected object type: %T", event.Object)
+	}
+
+	log.Printf("Migration event: %s for migration %s in cluster %s", event.Type, migration.Name, cw.config.Name)
+
+	switch event.Type {
+	case watch.Added, watch.Modified:
+		modelMigration := cw.convertToModelMigration(migration)
+		log.Printf("Processing migration %s (phase: %s) from cluster %s", migration.Name, modelMigration.Phase, cw.config.Name)
+		return cw.updateMigrationInDatabase(modelMigration)
+	case watch.Deleted:
+		return cw.removeMigrationFromDatabase(migration.Name)
+	default:
+		log.Printf("Unknown migration event type: %s", event.Type)
+	}
+
+	return nil
+}
+
+// convertToModelMigration converts a KubeVirt VirtualMachineInstanceMigration to our internal Migration model
+func (cw *ClusterWatcher) convertToModelMigration(migration *kubevirtv1.VirtualMachineInstanceMigration) *models.Migration {
+	modelMigration := &models.Migration{
+		ID:           migration.Name,
+		VMName:       migration.Spec.VMIName,
+		VMID:         migration.Spec.VMIName, // Use VM name as ID for consistency
+		Namespace:    migration.Namespace,
+		Cluster:      cw.config.Name,
+		DatacenterID: cw.config.DatacenterID,
+		Phase:        string(migration.Status.Phase),
+		CreatedAt:    migration.CreationTimestamp.Time,
+		UpdatedAt:    time.Now(),
+		Labels:       migration.Labels,
+	}
+
+	// Extract migration state information
+	if migration.Status.MigrationState != nil {
+		migState := migration.Status.MigrationState
+
+		// Source and target nodes
+		if migState.SourceNode != "" {
+			modelMigration.SourceNode = migState.SourceNode
+		}
+		if migState.TargetNode != "" {
+			modelMigration.TargetNode = migState.TargetNode
+		}
+
+		// Source and target pods
+		if migState.SourcePod != "" {
+			modelMigration.SourcePod = migState.SourcePod
+		}
+		if migState.TargetPod != "" {
+			modelMigration.TargetPod = migState.TargetPod
+		}
+
+		// Timing information
+		if migState.StartTimestamp != nil {
+			modelMigration.StartTime = &migState.StartTimestamp.Time
+		}
+		if migState.EndTimestamp != nil {
+			modelMigration.EndTime = &migState.EndTimestamp.Time
+		}
+
+		// Completion status
+		modelMigration.Completed = migState.Completed
+	}
+
+	// Extract phase transitions
+	if len(migration.Status.PhaseTransitionTimestamps) > 0 {
+		for _, transition := range migration.Status.PhaseTransitionTimestamps {
+			modelMigration.PhaseTransitions = append(modelMigration.PhaseTransitions, models.MigrationTransition{
+				Phase:     string(transition.Phase),
+				Timestamp: transition.PhaseTransitionTimestamp.Time,
+			})
+		}
+	}
+
+	return modelMigration
+}
+
+// updateMigrationInDatabase updates or creates a migration in the database
+func (cw *ClusterWatcher) updateMigrationInDatabase(migration *models.Migration) error {
+	// Try to get existing migration
+	existing, err := cw.dataStore.GetMigration(migration.ID)
+	if err != nil {
+		// Migration doesn't exist, add it
+		err = cw.dataStore.AddMigration(*migration)
+		if err != nil {
+			return fmt.Errorf("failed to add migration to database: %w", err)
+		}
+		log.Printf("Added new migration %s to datacenter %s", migration.ID, cw.config.DatacenterID)
+	} else {
+		// Migration exists, update it (preserve creation time)
+		migration.CreatedAt = existing.CreatedAt
+		err = cw.dataStore.UpdateMigration(*migration)
+		if err != nil {
+			return fmt.Errorf("failed to update migration in database: %w", err)
+		}
+		log.Printf("Updated migration %s in datacenter %s", migration.ID, cw.config.DatacenterID)
+	}
+
+	return nil
+}
+
+// removeMigrationFromDatabase removes a migration from the database
+func (cw *ClusterWatcher) removeMigrationFromDatabase(migrationName string) error {
+	err := cw.dataStore.RemoveMigration(migrationName)
+	if err != nil {
+		// If migration doesn't exist, that's fine
+		if strings.Contains(err.Error(), "not found") {
+			log.Printf("Migration %s was not in store (datacenter %s), skipping removal", migrationName, cw.config.DatacenterID)
+			return nil
+		}
+		return fmt.Errorf("failed to remove migration from database: %w", err)
+	}
+
+	log.Printf("Removed migration %s from datacenter %s", migrationName, cw.config.DatacenterID)
 	return nil
 }

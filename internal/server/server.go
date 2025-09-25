@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -203,6 +204,13 @@ func StartBackendServer(port int) {
 	// Auto migrate (picks a random VM and migrates it)
 	api.Get("/migrate", autoMigrateVM)
 
+	// Migration tracking endpoints
+	api.Get("/migrations", getAllMigrations)
+	api.Get("/migrations/:id", getMigration)
+	api.Get("/migrations/datacenter/:dcId", getMigrationsByDatacenter)
+	api.Get("/migrations/vm/:vmName", getMigrationsByVM)
+	api.Get("/migrations/active", getActiveMigrations)
+
 	// Status endpoint
 	api.Get("/status", getStatus)
 
@@ -389,4 +397,52 @@ func getStatus(c *fiber.Ctx) error {
 		"running_vms": runningVMs,
 		"stopped_vms": totalVMs - runningVMs,
 	})
+}
+
+// Migration API handlers
+
+func getAllMigrations(c *fiber.Ctx) error {
+	migrations, err := dataStore.GetAllMigrations()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(migrations)
+}
+
+func getMigration(c *fiber.Ctx) error {
+	id := c.Params("id")
+	migration, err := dataStore.GetMigration(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return c.Status(404).JSON(fiber.Map{"error": "migration not found"})
+		}
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(migration)
+}
+
+func getMigrationsByDatacenter(c *fiber.Ctx) error {
+	dcId := c.Params("dcId")
+	migrations, err := dataStore.GetMigrationsByDatacenter(dcId)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(migrations)
+}
+
+func getMigrationsByVM(c *fiber.Ctx) error {
+	vmName := c.Params("vmName")
+	migrations, err := dataStore.GetMigrationsByVM(vmName)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(migrations)
+}
+
+func getActiveMigrations(c *fiber.Ctx) error {
+	migrations, err := dataStore.GetActiveMigrations()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(migrations)
 }

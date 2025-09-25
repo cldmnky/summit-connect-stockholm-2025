@@ -8,6 +8,7 @@ class StockholmDatacentersMap {
         this.migrationAnimations = []; // Track active animations
         this.migrationLines = new Map(); // Track active migration lines
         this.forceGraphs = new Map(); // Track force-directed graphs for each datacenter
+        this.migrations = []; // Track migration data
         this.currentLayer = 'satellite';
         this.layers = {};
         
@@ -24,6 +25,10 @@ class StockholmDatacentersMap {
         this.renderDatacenterView();
         this.updateStats();
         this.startSimulation();
+        
+        // Load and render migration data
+        await this.loadMigrations();
+        this.renderMigrationList();
         
         // Clear any leftover migration animations from previous sessions
         this.clearMigrationAnimations();
@@ -777,6 +782,14 @@ class StockholmDatacentersMap {
                 } else {
                     console.warn('Migrations detected but no valid entries to animate', migrations);
                 }
+            }
+
+            // Refresh migration data
+            try {
+                await this.loadMigrations();
+                this.renderMigrationList();
+            } catch (e) {
+                console.warn('Failed to refresh migration data:', e);
             }
         } catch (err) {
             console.error('Auto-refresh failed:', err.message || err);
@@ -1573,6 +1586,9 @@ class StockholmDatacentersMap {
             });
         }
 
+        // Migration controls
+        this.setupMigrationControls();
+
         // Add test function to window for demo purposes
         const self = this;
         window.testMigrationNotification = function() {
@@ -1763,6 +1779,181 @@ class StockholmDatacentersMap {
                 }
             });
         }, 3000); // Show activity every 3 seconds
+    }
+
+    // Migration-related methods
+
+    async loadMigrations() {
+        try {
+            const response = await fetch('/api/v1/migrations');
+            const data = await response.json();
+            this.migrations = Array.isArray(data) ? data : [];
+            console.log('Loaded migrations from API:', this.migrations);
+        } catch (error) {
+            console.error('Error loading migrations from API:', error);
+            this.migrations = [];
+        }
+    }
+
+    async loadActiveMigrations() {
+        try {
+            const response = await fetch('/api/v1/migrations/active');
+            const data = await response.json();
+            return Array.isArray(data) ? data : [];
+        } catch (error) {
+            console.error('Error loading active migrations from API:', error);
+            return [];
+        }
+    }
+
+    renderMigrationList() {
+        const migrationContainer = document.getElementById('migration-list-rows');
+        if (!migrationContainer) {
+            console.warn('Migration container not found');
+            return;
+        }
+
+        const filterMode = document.getElementById('migration-filter-mode')?.value || 'active';
+        
+        let filteredMigrations = [];
+        if (filterMode === 'active') {
+            filteredMigrations = this.migrations.filter(m => !m.completed);
+        } else if (filterMode === 'completed') {
+            filteredMigrations = this.migrations.filter(m => m.completed && m.phase === 'Succeeded');
+        } else {
+            filteredMigrations = this.migrations;
+        }
+
+        // Sort by most recent first
+        filteredMigrations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        if (filteredMigrations.length === 0) {
+            migrationContainer.innerHTML = `
+                <div class="empty-state">
+                    <p style="font-size:12px; color:#666; text-align:center; padding:10px;">
+                        ${filterMode === 'active' ? 'No active migrations' : 'No migrations found'}
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        const migrationRows = filteredMigrations.map(migration => {
+            const duration = this.calculateMigrationDuration(migration);
+            const timeAgo = this.formatTimeAgo(migration.createdAt);
+            
+            return `
+                <div class="migration-item" onclick="app.showMigrationDetails('${migration.id}')">
+                    <div class="migration-header">
+                        <span class="migration-vm-name">${migration.vmName}</span>
+                        <span class="migration-phase ${migration.phase.toLowerCase()}">${migration.phase}</span>
+                    </div>
+                    <div class="migration-nodes">
+                        <span>${migration.sourceNode || 'Unknown'}</span>
+                        <span class="migration-arrow">→</span>
+                        <span>${migration.targetNode || 'Unknown'}</span>
+                    </div>
+                    <div class="migration-time">${timeAgo}</div>
+                    ${duration ? `<div class="migration-duration">${duration}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        migrationContainer.innerHTML = migrationRows;
+    }
+
+    calculateMigrationDuration(migration) {
+        if (!migration.startTime) return null;
+        
+        const start = new Date(migration.startTime);
+        const end = migration.endTime ? new Date(migration.endTime) : new Date();
+        const diffMs = end - start;
+        
+        if (diffMs < 0) return null;
+        
+        const minutes = Math.floor(diffMs / 60000);
+        const seconds = Math.floor((diffMs % 60000) / 1000);
+        
+        if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        } else {
+            return `${seconds}s`;
+        }
+    }
+
+    formatTimeAgo(dateString) {
+        const now = new Date();
+        const date = new Date(dateString);
+        const diffMs = now - date;
+        
+        const minutes = Math.floor(diffMs / 60000);
+        const hours = Math.floor(diffMs / 3600000);
+        const days = Math.floor(diffMs / 86400000);
+        
+        if (days > 0) return `${days}d ago`;
+        if (hours > 0) return `${hours}h ago`;
+        if (minutes > 0) return `${minutes}m ago`;
+        return 'Just now';
+    }
+
+    showMigrationDetails(migrationId) {
+        const migration = this.migrations.find(m => m.id === migrationId);
+        if (!migration) {
+            console.warn('Migration not found:', migrationId);
+            return;
+        }
+
+        // Create a detailed popup or modal
+        let details = `Migration Details for ${migration.vmName}\n\n`;
+        details += `ID: ${migration.id}\n`;
+        details += `Phase: ${migration.phase}\n`;
+        details += `Cluster: ${migration.cluster}\n`;
+        details += `Namespace: ${migration.namespace}\n`;
+        details += `Source Node: ${migration.sourceNode || 'Unknown'}\n`;
+        details += `Target Node: ${migration.targetNode || 'Unknown'}\n`;
+        details += `Created: ${new Date(migration.createdAt).toLocaleString()}\n`;
+        
+        if (migration.startTime) {
+            details += `Started: ${new Date(migration.startTime).toLocaleString()}\n`;
+        }
+        
+        if (migration.endTime) {
+            details += `Ended: ${new Date(migration.endTime).toLocaleString()}\n`;
+        }
+
+        if (migration.phaseTransitions && migration.phaseTransitions.length > 0) {
+            details += `\nPhase Transitions:\n`;
+            migration.phaseTransitions.forEach(transition => {
+                details += `- ${transition.phase}: ${new Date(transition.timestamp).toLocaleString()}\n`;
+            });
+        }
+
+        alert(details); // Simple alert for now - could be enhanced with a modal
+    }
+
+    setupMigrationControls() {
+        // Migration filter change handler
+        const migrationFilter = document.getElementById('migration-filter-mode');
+        if (migrationFilter) {
+            migrationFilter.addEventListener('change', () => {
+                this.renderMigrationList();
+            });
+        }
+
+        // Refresh migrations button
+        const refreshBtn = document.getElementById('refresh-migrations');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.textContent = 'Loading...';
+                refreshBtn.disabled = true;
+                
+                await this.loadMigrations();
+                this.renderMigrationList();
+                
+                refreshBtn.textContent = 'Refresh';
+                refreshBtn.disabled = false;
+            });
+        }
     }
 
 }

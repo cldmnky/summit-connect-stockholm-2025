@@ -3,6 +3,7 @@ package data
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -16,8 +17,9 @@ import (
 )
 
 const (
-	defaultBucket = "datacenters"
-	defaultKey    = "collection"
+	defaultBucket    = "datacenters"
+	migrationsBucket = "migrations"
+	defaultKey       = "collection"
 )
 
 // DataStore handles data operations and persists to BoltDB
@@ -48,6 +50,10 @@ func NewDataStore(dbPath string, jsonSeedPath string) (*DataStore, error) {
 	// Create bucket if not exists and try to load existing collection
 	err = ds.db.Update(func(tx *bbolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte(defaultBucket))
+		if err != nil {
+			return err
+		}
+		_, err = tx.CreateBucketIfNotExists([]byte(migrationsBucket))
 		return err
 	})
 	if err != nil {
@@ -616,4 +622,197 @@ func (ds *DataStore) InitializeWithSampleData() {
 	} else {
 		fmt.Printf("[DataStore] InitializeWithSampleData marshal error: %v\n", err)
 	}
+}
+
+// Migration tracking methods
+
+// AddMigration adds a new migration to the data store
+func (ds *DataStore) AddMigration(migration models.Migration) error {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
+	buf, err := json.Marshal(migration)
+	if err != nil {
+		return fmt.Errorf("failed to marshal migration: %w", err)
+	}
+
+	return ds.db.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(migrationsBucket))
+		if b == nil {
+			return fmt.Errorf("migrations bucket not found")
+		}
+		return b.Put([]byte(migration.ID), buf)
+	})
+}
+
+// UpdateMigration updates an existing migration in the data store
+func (ds *DataStore) UpdateMigration(migration models.Migration) error {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
+	migration.UpdatedAt = time.Now()
+
+	buf, err := json.Marshal(migration)
+	if err != nil {
+		return fmt.Errorf("failed to marshal migration: %w", err)
+	}
+
+	return ds.db.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(migrationsBucket))
+		if b == nil {
+			return fmt.Errorf("migrations bucket not found")
+		}
+		return b.Put([]byte(migration.ID), buf)
+	})
+}
+
+// GetMigration retrieves a migration by ID
+func (ds *DataStore) GetMigration(migrationID string) (*models.Migration, error) {
+	ds.mu.RLock()
+	defer ds.mu.RUnlock()
+
+	var migration models.Migration
+	err := ds.db.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(migrationsBucket))
+		if b == nil {
+			return fmt.Errorf("migrations bucket not found")
+		}
+		v := b.Get([]byte(migrationID))
+		if v == nil {
+			return fmt.Errorf("migration %s not found", migrationID)
+		}
+		return json.Unmarshal(v, &migration)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &migration, nil
+}
+
+// GetAllMigrations retrieves all migrations
+func (ds *DataStore) GetAllMigrations() ([]models.Migration, error) {
+	ds.mu.RLock()
+	defer ds.mu.RUnlock()
+
+	var migrations []models.Migration
+	err := ds.db.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(migrationsBucket))
+		if b == nil {
+			return fmt.Errorf("migrations bucket not found")
+		}
+		return b.ForEach(func(k, v []byte) error {
+			var migration models.Migration
+			if err := json.Unmarshal(v, &migration); err != nil {
+				log.Printf("Failed to unmarshal migration %s: %v", string(k), err)
+				return nil // Continue to next migration
+			}
+			migrations = append(migrations, migration)
+			return nil
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return migrations, nil
+}
+
+// GetMigrationsByDatacenter retrieves migrations for a specific datacenter
+func (ds *DataStore) GetMigrationsByDatacenter(datacenterID string) ([]models.Migration, error) {
+	ds.mu.RLock()
+	defer ds.mu.RUnlock()
+
+	var migrations []models.Migration
+	err := ds.db.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(migrationsBucket))
+		if b == nil {
+			return fmt.Errorf("migrations bucket not found")
+		}
+		return b.ForEach(func(k, v []byte) error {
+			var migration models.Migration
+			if err := json.Unmarshal(v, &migration); err != nil {
+				log.Printf("Failed to unmarshal migration %s: %v", string(k), err)
+				return nil // Continue to next migration
+			}
+			if migration.DatacenterID == datacenterID {
+				migrations = append(migrations, migration)
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return migrations, nil
+}
+
+// GetMigrationsByVM retrieves migrations for a specific VM
+func (ds *DataStore) GetMigrationsByVM(vmName string) ([]models.Migration, error) {
+	ds.mu.RLock()
+	defer ds.mu.RUnlock()
+
+	var migrations []models.Migration
+	err := ds.db.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(migrationsBucket))
+		if b == nil {
+			return fmt.Errorf("migrations bucket not found")
+		}
+		return b.ForEach(func(k, v []byte) error {
+			var migration models.Migration
+			if err := json.Unmarshal(v, &migration); err != nil {
+				log.Printf("Failed to unmarshal migration %s: %v", string(k), err)
+				return nil // Continue to next migration
+			}
+			if migration.VMName == vmName {
+				migrations = append(migrations, migration)
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return migrations, nil
+}
+
+// GetActiveMigrations retrieves all active (non-completed) migrations
+func (ds *DataStore) GetActiveMigrations() ([]models.Migration, error) {
+	ds.mu.RLock()
+	defer ds.mu.RUnlock()
+
+	var migrations []models.Migration
+	err := ds.db.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(migrationsBucket))
+		if b == nil {
+			return fmt.Errorf("migrations bucket not found")
+		}
+		return b.ForEach(func(k, v []byte) error {
+			var migration models.Migration
+			if err := json.Unmarshal(v, &migration); err != nil {
+				log.Printf("Failed to unmarshal migration %s: %v", string(k), err)
+				return nil // Continue to next migration
+			}
+			if !migration.Completed {
+				migrations = append(migrations, migration)
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return migrations, nil
+}
+
+// RemoveMigration removes a migration from the data store
+func (ds *DataStore) RemoveMigration(migrationID string) error {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
+	return ds.db.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(migrationsBucket))
+		if b == nil {
+			return fmt.Errorf("migrations bucket not found")
+		}
+		return b.Delete([]byte(migrationID))
+	})
 }

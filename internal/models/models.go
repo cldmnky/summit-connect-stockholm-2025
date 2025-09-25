@@ -54,3 +54,31 @@ type MigrateResponse struct {
 	Message string `json:"message"`
 	VM      *VM    `json:"vm,omitempty"`
 }
+
+// Migration represents a VM migration in progress or completed
+type Migration struct {
+	ID               string                `json:"id"`               // Migration CR name
+	VMID             string                `json:"vmId"`             // VM being migrated
+	VMName           string                `json:"vmName"`           // VM name
+	Namespace        string                `json:"namespace"`        // Kubernetes namespace
+	Cluster          string                `json:"cluster"`          // Cluster where migration is happening
+	DatacenterID     string                `json:"datacenterId"`     // Datacenter ID
+	Phase            string                `json:"phase"`            // Current phase (Pending, Running, Succeeded, Failed)
+	SourceNode       string                `json:"sourceNode"`       // Source node name
+	TargetNode       string                `json:"targetNode"`       // Target node name
+	SourcePod        string                `json:"sourcePod"`        // Source pod name
+	TargetPod        string                `json:"targetPod"`        // Target pod name
+	StartTime        *time.Time            `json:"startTime"`        // Migration start time
+	EndTime          *time.Time            `json:"endTime"`          // Migration end time
+	PhaseTransitions []MigrationTransition `json:"phaseTransitions"` // Phase transition history
+	CreatedAt        time.Time             `json:"createdAt"`        // When migration CR was created
+	UpdatedAt        time.Time             `json:"updatedAt"`        // Last update time
+	Completed        bool                  `json:"completed"`        // Whether migration is completed
+	Labels           map[string]string     `json:"labels,omitempty"` // Migration labels (plan, migration ID, etc.)
+}
+
+// MigrationTransition represents a phase transition in a migration
+type MigrationTransition struct {
+	Phase     string    `json:"phase"`     // Phase name
+	Timestamp time.Time `json:"timestamp"` // When transition happened
+}
