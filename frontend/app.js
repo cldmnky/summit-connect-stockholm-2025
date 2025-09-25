@@ -21,6 +21,7 @@ class StockholmDatacentersMap {
         this.addDatacenters();
         this.setupControls();
         this.renderGlobalVMList();
+        this.renderDatacenterView();
         this.updateStats();
         this.startSimulation();
         
@@ -229,6 +230,7 @@ class StockholmDatacentersMap {
             this.currentPopupDcId = datacenter.id;
             this.showDatacenterInfo(datacenter);
             this.renderGlobalVMList(datacenter.id);
+            this.renderDatacenterView(datacenter.id); // Update datacenter view
         });
         marker.on('popupclose', () => {
             if (this.currentPopupDcId === datacenter.id) this.currentPopupDcId = null;
@@ -238,6 +240,7 @@ class StockholmDatacentersMap {
             // clicking marker opens popup; ensure info panel updates
             this.showDatacenterInfo(datacenter);
             this.renderGlobalVMList(datacenter.id);
+            this.renderDatacenterView(datacenter.id); // Update datacenter view
         });
         
     // Store marker reference
@@ -380,6 +383,246 @@ class StockholmDatacentersMap {
             row.appendChild(actions);
             container.appendChild(row);
         });
+    }
+
+    renderDatacenterView(selectedDatacenterId = null) {
+        const container = document.getElementById('datacenter-view');
+        if (!container) {
+            console.warn('[DEBUG] Datacenter view container not found!');
+            return;
+        }
+
+        // Clear existing content
+        container.innerHTML = '';
+
+        if (this.datacenters.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>No datacenters available</p>
+                </div>
+            `;
+            return;
+        }
+
+        // If no datacenter is selected, show all datacenters
+        if (!selectedDatacenterId) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>Click on a datacenter marker to view details</p>
+                </div>
+            `;
+            
+            // Show all datacenters in a summary view
+            this.datacenters.forEach(dc => {
+                const dcCard = this.createDatacenterCard(dc, false);
+                container.appendChild(dcCard);
+            });
+            return;
+        }
+
+        // Show detailed view for selected datacenter
+        const selectedDc = this.datacenters.find(dc => dc.id === selectedDatacenterId);
+        if (selectedDc) {
+            const dcCard = this.createDatacenterCard(selectedDc, true);
+            container.appendChild(dcCard);
+        }
+    }
+
+    createDatacenterCard(datacenter, isSelected = false) {
+        const vmsList = datacenter.vms || datacenter.VMs || [];
+        const card = document.createElement('div');
+        card.className = `datacenter-card ${isSelected ? 'selected' : ''}`;
+        
+        // Group VMs by cluster
+        const vmsByCluster = new Map();
+        const clusters = datacenter.clusters || [];
+        
+        // Initialize clusters
+        clusters.forEach(cluster => {
+            vmsByCluster.set(cluster, []);
+        });
+        
+        // Group VMs by their cluster
+        vmsList.forEach(vm => {
+            const cluster = vm.cluster || 'unknown';
+            if (!vmsByCluster.has(cluster)) {
+                vmsByCluster.set(cluster, []);
+            }
+            vmsByCluster.get(cluster).push(vm);
+        });
+
+        const runningVMs = vmsList.filter(vm => vm.status === 'running' || vm.phase === 'Running').length;
+        const totalVMs = vmsList.length;
+        
+        card.innerHTML = `
+            <div class="datacenter-header" onclick="window.app.focusOnDatacenter('${datacenter.id}')">
+                <h4 class="datacenter-title">${datacenter.name}</h4>
+                <div class="datacenter-status">
+                    <div class="status-indicator"></div>
+                    <span>Active</span>
+                </div>
+            </div>
+            <div class="datacenter-meta">
+                📍 ${datacenter.location}<br>
+                💻 ${totalVMs} VMs (${runningVMs} running)<br>
+                ⚙️ ${clusters.length} cluster${clusters.length !== 1 ? 's' : ''}
+            </div>
+        `;
+
+        if (isSelected && clusters.length > 0) {
+            const clustersSection = document.createElement('div');
+            clustersSection.className = 'clusters-section';
+            clustersSection.innerHTML = '<h5 class="clusters-title">🔧 Clusters & VMs</h5>';
+            
+            // Sort clusters by VM count (descending)
+            const sortedClusters = Array.from(vmsByCluster.entries())
+                .sort((a, b) => b[1].length - a[1].length);
+            
+            sortedClusters.forEach(([clusterName, clusterVMs]) => {
+                const clusterCard = this.createClusterCard(clusterName, clusterVMs, datacenter.id);
+                clustersSection.appendChild(clusterCard);
+            });
+            
+            card.appendChild(clustersSection);
+        }
+        
+        return card;
+    }
+
+    createClusterCard(clusterName, vms, datacenterId) {
+        const clusterCard = document.createElement('div');
+        clusterCard.className = 'cluster-card';
+        
+        const runningVMs = vms.filter(vm => vm.status === 'running' || vm.phase === 'Running').length;
+        const migratingVMs = vms.filter(vm => vm.migrationStatus === 'migrating' || vm.status === 'migrating').length;
+        
+        const clusterId = `cluster-${datacenterId}-${clusterName}`;
+        const isExpanded = localStorage.getItem(`cluster-expanded-${clusterId}`) !== 'false'; // Default to expanded
+        
+        clusterCard.innerHTML = `
+            <div class="cluster-header">
+                <div class="cluster-name">${clusterName}</div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    ${migratingVMs > 0 ? `<span style="color: #0ea5a4; font-size: 11px;">🔄 ${migratingVMs}</span>` : ''}
+                    <span class="vm-count-badge">${vms.length}</span>
+                    <button class="expand-toggle ${isExpanded ? 'expanded' : ''}" onclick="window.app.toggleCluster('${clusterId}')">▶</button>
+                </div>
+            </div>
+        `;
+        
+        const vmsList = document.createElement('div');
+        vmsList.className = `cluster-vms ${isExpanded ? '' : 'collapsed'}`;
+        vmsList.id = `vms-${clusterId}`;
+        
+        if (vms.length === 0) {
+            vmsList.innerHTML = '<div class="no-vms">No VMs in this cluster</div>';
+        } else {
+            // Sort VMs: migrating first, then by status, then by name
+            const sortedVMs = vms.sort((a, b) => {
+                const aMigrating = a.migrationStatus === 'migrating' || a.status === 'migrating' ? 1 : 0;
+                const bMigrating = b.migrationStatus === 'migrating' || b.status === 'migrating' ? 1 : 0;
+                
+                if (aMigrating !== bMigrating) return bMigrating - aMigrating;
+                
+                const aStatus = a.status || a.phase || 'unknown';
+                const bStatus = b.status || b.phase || 'unknown';
+                if (aStatus !== bStatus) return aStatus.localeCompare(bStatus);
+                
+                return a.name.localeCompare(b.name);
+            });
+            
+            sortedVMs.forEach(vm => {
+                const vmItem = this.createVMItem(vm);
+                vmsList.appendChild(vmItem);
+            });
+        }
+        
+        clusterCard.appendChild(vmsList);
+        return clusterCard;
+    }
+
+    createVMItem(vm) {
+        const vmItem = document.createElement('div');
+        vmItem.className = 'vm-item';
+        
+        if (vm.migrationStatus === 'migrating' || vm.status === 'migrating') {
+            vmItem.classList.add('migrating');
+        }
+        
+        const status = vm.status || vm.phase || 'unknown';
+        const statusClass = this.getVMStatusClass(status, vm);
+        
+        const resources = [];
+        if (vm.cpu) resources.push(`${vm.cpu} CPU`);
+        if (vm.memory) resources.push(`${vm.memory}MB RAM`);
+        if (vm.disk) resources.push(`${vm.disk}GB`);
+        
+        const vmStatusText = vm.migrationStatus === 'migrating' ? '🔄 Migrating' : 
+                            vm.status === 'waitingforreceiver' ? '🔄 Waiting' : status;
+        
+        vmItem.innerHTML = `
+            <div class="vm-info">
+                <div class="vm-name">${vm.name}</div>
+                <div class="vm-details">
+                    ${resources.join(' • ')}
+                    ${vm.nodeName ? ` • ${vm.nodeName}` : ''}
+                    ${vm.age ? ` • ${vm.age}` : ''}
+                </div>
+            </div>
+            <div class="vm-status">
+                <div class="vm-status-icon ${statusClass}"></div>
+                <span>${vmStatusText}</span>
+            </div>
+        `;
+        
+        return vmItem;
+    }
+
+    getVMStatusClass(status, vm) {
+        if (vm.migrationStatus === 'migrating' || vm.status === 'migrating' || vm.status === 'waitingforreceiver') {
+            return 'migrating';
+        }
+        
+        const normalizedStatus = status.toLowerCase();
+        if (normalizedStatus.includes('running')) return 'running';
+        if (normalizedStatus.includes('stopped')) return 'stopped';
+        if (normalizedStatus.includes('starting')) return 'starting';
+        
+        return 'running'; // Default
+    }
+
+    focusOnDatacenter(datacenterId) {
+        const datacenter = this.datacenters.find(dc => dc.id === datacenterId);
+        if (datacenter && this.map) {
+            this.map.setView([datacenter.coordinates[0], datacenter.coordinates[1]], 14, { animate: true });
+            
+            // Open the marker popup
+            const marker = this.markerByDcId.get(datacenterId);
+            if (marker) {
+                marker.openPopup();
+            }
+            
+            this.renderDatacenterView(datacenterId);
+        }
+    }
+
+    toggleCluster(clusterId) {
+        const vmsList = document.getElementById(`vms-${clusterId}`);
+        const toggle = document.querySelector(`#datacenter-view .expand-toggle[onclick*="${clusterId}"]`);
+        
+        if (vmsList && toggle) {
+            const isCollapsed = vmsList.classList.contains('collapsed');
+            
+            if (isCollapsed) {
+                vmsList.classList.remove('collapsed');
+                toggle.classList.add('expanded');
+                localStorage.setItem(`cluster-expanded-${clusterId}`, 'true');
+            } else {
+                vmsList.classList.add('collapsed');
+                toggle.classList.remove('expanded');
+                localStorage.setItem(`cluster-expanded-${clusterId}`, 'false');
+            }
+        }
     }
 
     // Remove existing markers from the map and reset
@@ -542,6 +785,7 @@ class StockholmDatacentersMap {
             // Refresh UI lists/stats
             this.updateStats();
             this.renderGlobalVMList();
+            this.renderDatacenterView(this.currentPopupDcId); // Update datacenter view
             
             console.log('[DEBUG] Updating force graphs...');
             // Update force-directed graphs smartly (only if data changed)
@@ -1535,6 +1779,7 @@ class StockholmDatacentersMap {
 
         // refresh global VM list since counts may have changed
         this.renderGlobalVMList();
+        this.renderDatacenterView(this.currentPopupDcId);
     }
     
     startSimulation() {
@@ -1564,6 +1809,9 @@ let app;
 // Initialize the application when the DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
     app = new StockholmDatacentersMap();
+    
+    // Make app globally accessible
+    window.app = app;
     
     // Handle window resize
     window.addEventListener('resize', () => {
