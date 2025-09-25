@@ -280,59 +280,79 @@ class StockholmDatacentersMap {
             const row = document.createElement('div');
             row.className = 'vm-row';
 
-            // Add migration styling for migrating VMs
+            // migrating state
             if (vm.migrationStatus === "migrating" || vm.status === "migrating" || vm.status === "waitingforreceiver") {
                 row.classList.add('migrating');
             }
 
-            // highlight if belongs to focused datacenter
+            // focus highlight
             if (focusDatacenterId && vm.datacenterId === focusDatacenterId) {
                 row.style.background = '#f1f5ff';
                 row.style.borderColor = '#e0e7ff';
             }
 
-            const meta = document.createElement('div');
-            meta.className = 'vm-meta';
-            
-            // Build VM status and KubeVirt info - use phase instead of status to avoid duplication
+            // Build a compact table-like grid for VM metadata
+            const table = document.createElement('div');
+            table.className = 'vm-table';
+
+            // Left column: primary label (name / id)
+            const leftLabel = document.createElement('div');
+            leftLabel.className = 'label';
+            leftLabel.textContent = vm.name || vm.id || 'unnamed';
+
+            // Right column: values (datacenter, status, kubevirt info) and actions
+            const rightValue = document.createElement('div');
+            rightValue.className = 'value';
+
+            // Status / migration display
             const vmStatus = vm.phase || vm.status || 'Unknown';
-            let kubeVirtInfo = '';
-            if (vm.cluster) kubeVirtInfo += ` • Cluster: ${vm.cluster}`;
-            if (vm.namespace) kubeVirtInfo += ` • NS: ${vm.namespace}`;
-            if (vm.ip) kubeVirtInfo += ` • IP: ${vm.ip}`;
-            if (vm.nodeName) kubeVirtInfo += ` • Node: ${vm.nodeName}`;
-            if (vm.ready !== undefined) kubeVirtInfo += ` • Ready: ${vm.ready ? '✓' : '✗'}`;
-            if (vm.age) kubeVirtInfo += ` • Age: ${vm.age}`;
-            
-            // Add migration indicator to status
+            let kubeVirtPieces = [];
+            if (vm.cluster) kubeVirtPieces.push(`Cluster: ${vm.cluster}`);
+            if (vm.namespace) kubeVirtPieces.push(`NS: ${vm.namespace}`);
+            if (vm.ip) kubeVirtPieces.push(`IP: ${vm.ip}`);
+            if (vm.nodeName) kubeVirtPieces.push(`Node: ${vm.nodeName}`);
+            if (vm.ready !== undefined) kubeVirtPieces.push(`Ready: ${vm.ready ? '✓' : '✗'}`);
+            if (vm.age) kubeVirtPieces.push(`Age: ${vm.age}`);
+
             let statusDisplay = vmStatus;
             if (vm.migrationStatus === "migrating" || vm.status === "migrating" || vm.status === "waitingforreceiver") {
                 const icon = '🔄';
                 statusDisplay = vm.status === "waitingforreceiver" ? `${icon} Waiting for receiver` : `${icon} Migrating`;
             }
-            
-            meta.innerHTML = `<div>
-                    <div class="vm-name">${vm.name}</div>
-                    <div class="vm-sub">${vm.id} • ${vm.datacenterName} • <span class="vm-status">${statusDisplay}</span>${kubeVirtInfo}</div>
-                    <div class="vm-resources">CPU: ${vm.cpu || 'N/A'} • Memory: ${vm.memory || 'N/A'}MB • Disk: ${vm.disk || 'N/A'}GB</div>
-                </div>`;
+
+            // Compose right column content
+            const metaLine = document.createElement('div');
+            metaLine.style.display = 'flex';
+            metaLine.style.justifyContent = 'space-between';
+            metaLine.style.alignItems = 'center';
+
+            const metaText = document.createElement('div');
+            metaText.innerHTML = `<div class="vm-sub">${vm.id} • ${vm.datacenterName} • <span class="vm-status">${statusDisplay}</span>${kubeVirtPieces.length ? ' • ' + kubeVirtPieces.join(' • ') : ''}</div>
+                <div class="vm-resources">CPU: ${vm.cpu || 'N/A'} • Mem: ${vm.memory || 'N/A'}MB • Disk: ${vm.disk || 'N/A'}GB</div>`;
 
             const actions = document.createElement('div');
             actions.className = 'vm-actions';
-            actions.innerHTML = `
-                <button title="Center on datacenter">Center</button>
-            `;
-
-            actions.querySelector('button').addEventListener('click', () => {
+            const btn = document.createElement('button');
+            btn.title = 'Center on datacenter';
+            btn.textContent = 'Center';
+            btn.addEventListener('click', () => {
                 const dc = this.datacenters.find(d => d.id === vm.datacenterId);
                 if (dc && this.map) {
                     this.map.setView([dc.coordinates[0], dc.coordinates[1]], 14, { animate: true });
                     this.showDatacenterInfo(dc);
                 }
             });
+            actions.appendChild(btn);
 
-            row.appendChild(meta);
-            row.appendChild(actions);
+            metaLine.appendChild(metaText);
+            metaLine.appendChild(actions);
+
+            rightValue.appendChild(metaLine);
+
+            table.appendChild(leftLabel);
+            table.appendChild(rightValue);
+
+            row.appendChild(table);
             container.appendChild(row);
         });
     }
