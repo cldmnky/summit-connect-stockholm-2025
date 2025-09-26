@@ -62,7 +62,6 @@ run-container: | build-container ## Run container locally with config and kubeco
 		--tmpfs /tmp \
 		-v $(PWD)/config:/config:ro \
 		-v $(PWD)/.kubeconfigs:/.kubeconfigs:ro \
-		-v $(HOME)/.kube:/root/.kube:ro \
 		ko.local/github.com/cldmnky/summit-connect-stockholm-2025:latest \
 		serve backend --port 3001 --config /config/datacenters.yaml --watch-vms
 	@echo "Container started. Waiting for startup..."
@@ -89,7 +88,6 @@ run-container-arm64: | build-container-arm64 ## Run ARM64 container locally with
 		--tmpfs /tmp \
 		-v $(PWD)/config:/config:ro \
 		-v $(PWD)/.kubeconfigs:/.kubeconfigs:ro \
-		-v $(HOME)/.kube:/root/.kube:ro \
 		ko.local/github.com/cldmnky/summit-connect-stockholm-2025:arm64 \
 		serve backend --port 3001 --config /config/datacenters.yaml --watch-vms
 	@echo "Container started. Waiting for startup..."
