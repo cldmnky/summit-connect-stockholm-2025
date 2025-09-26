@@ -1,0 +1,29 @@
+FROM registry.redhat.io/ubi9/go-toolset as build
+# Ensure Go does a pure-Go cross-compile to amd64 (x86_64).
+# Disable cgo so the toolchain can cross-compile without native C toolchains.
+RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go install github.com/prometheus-community/systemd_exporter@latest && \
+    GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go install github.com/prometheus/node_exporter@latest
+
+
+FROM registry.redhat.io/rhel10/rhel-bootc:latest
+LABEL MAINTAINER="Virt Corp <rhel@virt-corp.com>"
+RUN echo "%cloud-user        ALL=(ALL)       NOPASSWD: ALL" > /etc/sudoers.d/wheel-sudo
+RUN dnf -y install cloud-init qemu-guest-agent && \
+    rm -rf /var/{cache,log} /var/lib/{dnf,rhsm} && \
+    systemctl enable qemu-guest-agent && \
+    ln -s ../cloud-init.target /usr/lib/systemd/system/default.target.wants && \
+    dnf clean all
+# Add monitoring tools
+COPY --from=build /opt/app-root/src/go/bin/systemd_exporter /usr/bin/systemd_exporter
+COPY systemd_exporter.service /etc/systemd/system/systemd_exporter.service
+RUN useradd -rs /bin/false systemd_exporter && \
+    chown systemd_exporter:systemd_exporter /usr/bin/systemd_exporter && \
+    chmod 755 /usr/bin/systemd_exporter && \
+    systemctl enable systemd_exporter
+COPY --from=build /opt/app-root/src/go/bin/node_exporter /usr/bin/node_exporter
+COPY node_exporter.service /etc/systemd/system/node_exporter.service
+RUN useradd -rs /bin/false node_exporter && \
+    chown node_exporter:node_exporter /usr/bin/node_exporter && \
+    chmod 755 /usr/bin/node_exporter && \
+    systemctl enable node_exporter
+COPY usr/ /usr/
