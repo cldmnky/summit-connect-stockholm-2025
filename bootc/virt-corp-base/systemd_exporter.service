@@ -1,0 +1,12 @@
+[Unit]
+Description=Systemd Exporter
+After=network.target
+ 
+[Service]
+User=systemd_exporter
+Group=systemd_exporter
+Type=simple
+ExecStart=/usr/bin/systemd_exporter
+ 
+[Install]
+WantedBy=multi-user.target

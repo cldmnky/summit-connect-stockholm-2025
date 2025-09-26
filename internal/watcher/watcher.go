@@ -16,13 +16,12 @@ import (
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
-	"github.com/cldmnky/summit-connect-stockholm-2025/internal/data"
 	"github.com/cldmnky/summit-connect-stockholm-2025/internal/models"
 )
 
 // VMWatcher watches for VM changes across multiple clusters
 type VMWatcher struct {
-	dataStore *data.DataStore
+	dataStore models.Store
 	clusters  []ClusterConfig
 	watchers  map[string]*ClusterWatcher
 	ctx       context.Context
@@ -35,7 +34,7 @@ type ClusterWatcher struct {
 	config           ClusterConfig
 	k8sClient        kubernetes.Interface
 	kubevirtClient   kubecli.KubevirtClient
-	dataStore        *data.DataStore
+	dataStore        models.Store
 	vmWatcher        watch.Interface
 	migrationWatcher watch.Interface
 	ctx              context.Context
@@ -43,7 +42,7 @@ type ClusterWatcher struct {
 }
 
 // NewVMWatcher creates a new VM watcher
-func NewVMWatcher(dataStore *data.DataStore, configPath string) (*VMWatcher, error) {
+func NewVMWatcher(dataStore models.Store, configPath string) (*VMWatcher, error) {
 	// Load datacenter configuration
 	dcConfig, err := LoadDatacenterConfig(configPath)
 	if err != nil {

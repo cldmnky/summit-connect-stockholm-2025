@@ -2,6 +2,38 @@ package models
 
 import "time"
 
+// Store defines the interface for data storage operations
+type Store interface {
+	// Lifecycle
+	Close() error
+
+	// Configuration and initialization
+	InitializeFromVMWatcherConfig(configPath string) error
+	InitializeWithSampleData()
+
+	// Datacenter operations
+	GetDatacenters() *DatacenterCollection
+	UpdateDatacenter(id string, name *string, location *string, coordinates *[]float64) (*Datacenter, error)
+
+	// VM operations
+	UpdateVM(dcID, vmID string, name *string, status *string, cpu *int, memory *int, disk *int, cluster *string) (*VM, error)
+	UpdateVMComplete(dcID, vmID string, updatedVM *VM) (*VM, error)
+	AddVM(dcID string, vm VM) (*VM, error)
+	RemoveVM(dcID, vmID string) error
+	MigrateVM(vmID, fromDC, toDC string) (*VM, error)
+
+	// Migration operations
+	AddMigration(migration Migration) error
+	UpdateMigration(migration Migration) error
+	GetMigration(migrationID string) (*Migration, error)
+	GetAllMigrations() ([]Migration, error)
+	GetMigrationsByDatacenter(datacenterID string) ([]Migration, error)
+	GetMigrationsByVM(vmName string) ([]Migration, error)
+	GetActiveMigrations() ([]Migration, error)
+	GetMigrationsByDirection(direction string) ([]Migration, error)
+	RemoveMigration(migrationID string) error
+}
+
 // VM represents a virtual machine
 type VM struct {
 	ID             string     `json:"id"`
