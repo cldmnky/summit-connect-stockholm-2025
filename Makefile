@@ -52,7 +52,7 @@ build-container-local: ko
 	KO_DOCKER_REPO=ko.local $(KO) build --platform=linux/amd64,linux/arm64 --preserve-import-paths .
 	@echo "Local multi-arch container image built: ko.local/$(shell basename $(PWD))"
 
-run-container: | build-container ## Run container locally with config and kubeconfig mounts
+run-container: | build-container-local ## Run container locally with config and kubeconfig mounts
 	@echo "Running container with config and kubeconfig mounts..."
 	podman stop summit-connect 2>/dev/null || true
 	podman rm summit-connect 2>/dev/null || true
