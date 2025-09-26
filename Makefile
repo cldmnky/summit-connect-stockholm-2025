@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 PWD := $(shell pwd)
 
-.PHONY: help build build-container build-container-local run-container stop-container start stop dev status logs clean tools ko air
+.PHONY: help build test test-go test-e2e build-container build-container-local run-container stop-container start stop dev status logs clean tools ko air
 
 # Local bin directory for tools
 LOCALBIN ?= $(shell pwd)/bin
@@ -19,6 +19,9 @@ AIR ?= $(LOCALBIN)/air
 help:
 	@echo "Makefile targets:"
 	@echo "  build          # build the Go application"
+	@echo "  test           # run all tests (Go unit tests + e2e tests)"
+	@echo "  test-go        # run Go unit tests only"
+	@echo "  test-e2e       # run e2e tests only"
 	@echo "  build-container # build and push multi-arch container images using ko"
 	@echo "  build-container-local # build container image locally (no push)"
 	@echo "  run-container  # build and run container locally with config mounts"
@@ -40,6 +43,42 @@ build:
 	@echo "Building Go application..."
 	go build -o summit-connect
 	@echo "Built summit-connect binary"
+
+test: test-go test-e2e
+	@echo "All tests completed successfully!"
+
+test-go:
+	@echo "Running Go unit tests..."
+	@go test -v ./...
+	@echo "Go unit tests completed."
+
+test-e2e: | build start
+	@echo "Running e2e tests..."
+	@echo "Waiting for server to be ready..."
+	@sleep 2
+	@if ! command -v npm >/dev/null 2>&1; then \
+		echo "npm is required for e2e tests but not installed."; \
+		echo "Please install Node.js and npm to run e2e tests."; \
+		make stop; \
+		exit 1; \
+	fi
+	@if [ ! -f package.json ]; then \
+		echo "package.json not found. Cannot run e2e tests."; \
+		make stop; \
+		exit 1; \
+	fi
+	@if [ ! -d node_modules ]; then \
+		echo "Installing npm dependencies..."; \
+		npm install; \
+	fi
+	@if [ ! -d node_modules/@playwright ]; then \
+		echo "Installing Playwright browsers..."; \
+		npm run test:install; \
+	fi
+	@echo "Starting e2e test execution..."
+	@npm run test:e2e || (echo "E2E tests failed"; make stop; exit 1)
+	@make stop
+	@echo "E2E tests completed."
 
 build-container: ko
 	@echo "Building multi-architecture container images with ko..."
