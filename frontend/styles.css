@@ -1,4 +1,4 @@
-/* FORCE REFRESH - Cache busting comment v5.0 - Fixed collapsible functionality with max-height approach */
+/* FORCE REFRESH - Cache busting comment v6.0 - Fixed grid layout with proper positioning */
 * {
     margin: 0;
     padding: 0;
@@ -45,20 +45,26 @@ main.pf-v6-c-page__main-section {
 
 /* OpenShift-style layout grid - FORCE FULL HEIGHT */
 .openshift-layout {
+    display: grid !important;
+    grid-template-columns: 1fr 320px !important;
     height: calc(100vh - 160px) !important;
     min-height: 600px !important;
-    gap: var(--pf-v6-global--spacer--lg, 24px);
+    gap: var(--pf-v6-global--spacer--lg, 24px) !important;
+    overflow: hidden !important;
 }
 
 .openshift-layout .pf-v6-l-grid__item {
     display: flex;
     flex-direction: column;
+    min-width: 0 !important; /* Prevent flex items from overflowing */
 }
 
-/* FORCE map column to take more space */
+/* FORCE map column to respect grid layout */
 .openshift-layout .pf-v6-l-grid__item.pf-m-8-col-on-lg {
-    height: calc(100vh - 160px) !important;
     min-height: 600px !important;
+    max-width: none !important;
+    width: auto !important; /* Override JavaScript forced width */
+    grid-column: 1 !important;
 }
 
 /* Header/Banner styling to match OpenShift */
@@ -68,6 +74,24 @@ header.pf-v6-c-page__main-section {
     box-shadow: 0 1px 4px rgba(3, 3, 3, 0.12), 0 0 8px rgba(3, 3, 3, 0.06);
     margin-bottom: 0;
     padding: 24px;
+}
+
+/* Sidebar column positioning */
+.openshift-layout .pf-v6-l-grid__item.pf-m-4-col-on-lg {
+    grid-column: 2 !important;
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
+    z-index: 100 !important;
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff);
+}
+
+.sidebar-panels {
+    height: 100% !important;
+    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--pf-v6-global--spacer--md, 16px) !important;
 }
 
 header .pf-v6-c-title {
@@ -127,20 +151,35 @@ header .pf-v6-c-content {
 /* Map container styling - FORCE LARGER SIZE */
 .pf-v6-c-card.map-container {
     flex: 1 !important;
-    min-height: 700px !important;
-    height: calc(100vh - 200px) !important;
+    min-height: 600px !important;
+    max-height: calc(100vh - 200px) !important;
+    width: 100% !important;
+    max-width: none !important;
     display: flex;
     flex-direction: column;
+    overflow: hidden !important;
 }
 
 .map-container .pf-v6-c-card__title {
     margin-bottom: 0;
+    flex-shrink: 0 !important;
 }
 
 .map-container .pf-v6-c-card__body {
     flex: 1 !important;
     position: relative;
     padding: 0;
+    overflow: hidden !important;
+    min-height: 0 !important;
+}
+
+#map {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    min-height: 500px !important;
+    z-index: 1 !important;
+}
     min-height: 650px !important;
     height: calc(100vh - 250px) !important;
 }

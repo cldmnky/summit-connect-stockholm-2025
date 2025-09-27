@@ -61,62 +61,22 @@ class StockholmDatacentersMap {
     forceCorrectStyling() {
         console.log('[DEBUG] Forcing correct styling...');
         
-        // Get actual viewport dimensions
-        const viewportHeight = window.innerHeight;
-        const viewportWidth = window.innerWidth;
-        
-        console.log(`[DEBUG] Viewport: ${viewportWidth}x${viewportHeight}`);
-        
-        // Calculate map dimensions (give it most of the available space)
-        const mapHeight = Math.max(600, viewportHeight - 250);  // At least 600px, leave 250px for header/sidebar
-        const mapWidth = Math.max(800, viewportWidth - 350);   // At least 800px, leave 350px for sidebar
-        
-        console.log(`[DEBUG] Setting map to: ${mapWidth}x${mapHeight}`);
-        
-        // Force map container sizing with absolute pixel values
-        const mapContainer = document.querySelector('.map-container');
-        const mapElement = document.getElementById('map');
-        
-        if (mapContainer) {
-            mapContainer.style.setProperty('height', `${mapHeight}px`, 'important');
-            mapContainer.style.setProperty('width', `${mapWidth}px`, 'important');
-            mapContainer.style.setProperty('max-width', 'none', 'important');
-            mapContainer.style.setProperty('flex', '1 1 auto', 'important');
+        // Don't force pixel dimensions - let CSS grid handle layout
+        // Just ensure Leaflet map resizes properly
+        if (this.map) {
+            console.log('[DEBUG] Invalidating map size...');
+            setTimeout(() => {
+                this.map.invalidateSize();
+                console.log('[DEBUG] Map size invalidated');
+            }, 100);
         }
         
-        if (mapElement) {
-            mapElement.style.setProperty('height', `${mapHeight}px`, 'important');
-            mapElement.style.setProperty('width', `${mapWidth}px`, 'important');
-            mapElement.style.setProperty('max-width', 'none', 'important');
-            
-            // Force map resize
-            if (this.map) {
-                console.log('[DEBUG] Invalidating map size...');
-                setTimeout(() => {
-                    this.map.invalidateSize();
-                    console.log('[DEBUG] Map size invalidated');
-                }, 100);
-            }
-        }
-        
-        // Force the grid layout to accommodate the larger map
-        const openShiftLayout = document.querySelector('.openshift-layout');
-        if (openShiftLayout) {
-            openShiftLayout.style.setProperty('grid-template-columns', '320px 1fr', 'important');
-            openShiftLayout.style.setProperty('gap', '20px', 'important');
-        }
-        
-        // Force remove borders from collapsed panels (but don't hide them completely)
+        // Force remove borders from collapsed panels (but don't override layout)
         const collapsedContents = document.querySelectorAll('.pf-v6-c-card__body.collapsed');
         collapsedContents.forEach(content => {
             content.style.setProperty('border', 'none', 'important');
-            content.style.setProperty('border-top', 'none', 'important');
-            content.style.setProperty('border-bottom', 'none', 'important');
-            content.style.setProperty('border-left', 'none', 'important');
-            content.style.setProperty('border-right', 'none', 'important');
             content.style.setProperty('padding', '0', 'important');
             content.style.setProperty('margin', '0', 'important');
-            // Don't use display:none as it breaks collapsible functionality
         });
         
         console.log('[DEBUG] Styling corrections applied');
@@ -179,30 +139,6 @@ class StockholmDatacentersMap {
     }
     
     initMap() {
-        // Get viewport dimensions for initial sizing
-        const viewportHeight = window.innerHeight;
-        const viewportWidth = window.innerWidth;
-        const mapHeight = Math.max(600, viewportHeight - 250);
-        const mapWidth = Math.max(800, viewportWidth - 350);
-        
-        console.log(`[DEBUG] Initial map sizing: ${mapWidth}x${mapHeight}`);
-        
-        // Force map container sizing before initialization
-        const mapContainer = document.querySelector('.map-container');
-        const mapElement = document.getElementById('map');
-        
-        if (mapContainer) {
-            mapContainer.style.setProperty('height', `${mapHeight}px`, 'important');
-            mapContainer.style.setProperty('width', `${mapWidth}px`, 'important');
-            mapContainer.style.setProperty('max-width', 'none', 'important');
-        }
-        
-        if (mapElement) {
-            mapElement.style.setProperty('height', `${mapHeight}px`, 'important');
-            mapElement.style.setProperty('width', `${mapWidth}px`, 'important');
-            mapElement.style.setProperty('max-width', 'none', 'important');
-        }
-        
         // Initialize map centered on Stockholm
         this.map = L.map('map').setView([59.3293, 18.0686], 11);
         
