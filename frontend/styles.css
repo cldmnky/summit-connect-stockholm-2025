@@ -5,90 +5,77 @@
 }
 
 body {
-    font-family: 'Red Hat Text', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f5f5f5;
+    font-family: 'Red Hat Text', 'Red Hat Display', 'Noto Sans', Helvetica, Arial, sans-serif;
+    background: var(--pf-t--global--background--color--primary, #f0f0f0);
     min-height: 100vh;
-    color: #151515;
+    color: var(--pf-t--global--text--color--regular, #151515);
     margin: 0;
     padding: 0;
 }
 
-/* App-specific container to avoid Bulma .container breakpoint limits */
-.app-container {
-    width: 100%;
-    max-width: min(2600px, 98vw); /* use nearly full viewport on very wide monitors */
-    margin: 0 auto; /* center on wide screens */
-    padding: 18px 28px;
-    background: #ffffff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    min-height: 100vh; /* allow content to grow if needed */
-    overflow: visible; /* let child panels handle overflow */
-    transition: max-width 240ms ease, padding 240ms ease;
+/* Page layout adjustments for PatternFly */
+.pf-v6-c-page__main-section {
+    padding: var(--pf-t--global--spacer--md, 16px);
 }
 
-/* Add Red Hat-style header */
-.app-header {
-    background: #151515;
-    color: white;
-    padding: 12px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid #292929;
+.pf-v6-c-page__main-section.pf-m-fill {
+    flex: 1;
+    min-height: calc(100vh - 200px);
 }
 
-.app-header .logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-weight: 600;
-    font-size: 16px;
+/* Ensure full height for main content */
+main.pf-v6-c-page__main-section {
+    height: calc(100vh - 160px);
 }
 
-.app-header .logo::before {
-    content: "🏢";
-    font-size: 20px;
-}
-
-header {
+/* Header styles */
+header.pf-v6-c-page__main-section {
     text-align: left;
-    margin: 16px 20px 12px 20px;
-    color: #151515;
+    margin-bottom: var(--pf-t--global--spacer--md, 16px);
     background: transparent;
 }
 
-header h1 {
-    font-size: 24px;
-    margin-bottom: 4px;
-    text-shadow: none;
-    font-weight: 500;
-    color: #151515;
+header .pf-v6-c-title {
+    margin-bottom: var(--pf-t--global--spacer--xs, 4px);
+    color: var(--pf-t--global--text--color--regular, #151515);
 }
 
-header p {
-    font-size: 13px;
-    opacity: 0.7;
-    color: #6a6e73;
+header .pf-v6-c-content {
+    color: var(--pf-t--global--text--color--subtle, #6a6e73);
 }
 
+/* Main content styles */
 main {
     padding: 0 8px 16px 8px;
     background: #ffffff;
-    /* Use flexible columns on wide screens so the map can expand */
     display: block;
 }
 
-.map-container {
+/* Grid adjustments for PatternFly */
+.pf-v6-l-grid.pf-m-gutter {
+    height: 100%;
+    margin: 0;
+}
+
+.pf-v6-l-grid__item {
+    height: 100%;
+}
+
+/* Map container styles */
+.map-container.pf-v6-c-card {
     background: #ffffff;
-    border-radius: 8px;
+    border-radius: var(--pf-t--global--border--radius--default, 8px);
     padding: 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border: 1px solid #d2d2d2;
     position: relative;
     overflow: hidden;
-    /* allow the map container to grow within a flex column; use max-height to avoid viewport overflow */
     max-height: calc(100vh - 160px);
+    height: calc(100vh - 200px);
+}
+
+.map-container.pf-v6-c-card .pf-v6-c-card__body {
+    padding: 0;
     height: 100%;
+    position: relative;
 }
 
 /* Make map larger and fill available space */
@@ -337,10 +324,10 @@ main {
     50% { box-shadow: 0 4px 20px rgba(14, 165, 164, 0.4); }
 }
 
-.map-control-btn {
-    /* Use Bulma button look via classes on the element; keep fallback */
-    padding: 8px 12px;
-    font-size: 12px;
+/* Map control button styles - PatternFly will handle base styling */
+.map-control-btn.pf-v6-c-button {
+    padding: var(--pf-t--global--spacer--sm, 8px) var(--pf-t--global--spacer--md, 12px);
+    font-size: var(--pf-t--global--font--size--sm, 12px);
 }
 
 /* Leaflet popup customization */
@@ -840,11 +827,12 @@ main {
         left: 8px;
     }
     
-    .columns[style*="margin: 0"] {
+    /* Remove old Bulma column selectors */
+    .pf-v6-l-grid[style*="margin: 0"] {
         margin: 0 !important;
     }
     
-    .column[style*="padding: 0"] {
+    .pf-v6-l-grid__item[style*="padding: 0"] {
         padding: 0 !important;
     }
 }
@@ -872,22 +860,22 @@ main {
 
 /* Two-column layout on very wide screens */
 @media (min-width: 1200px) {
-    /* Use Bulma's .columns as the flex container so inner .column widths behave correctly */
-    .columns {
+    /* Use PatternFly's grid as the flex container */
+    .pf-v6-l-grid.pf-m-gutter {
         display: flex;
-        gap: 24px;
+        gap: var(--pf-t--global--spacer--xl, 24px);
         align-items: stretch;
         width: 100%;
     }
 
     /* Make the main content column expand to fill available space */
-    .columns > .column.is-9 {
+    .pf-v6-l-grid__item.pf-m-9-col-on-lg {
         flex: 1 1 auto; /* make left column very flexible */
         min-width: 0; /* allow children to shrink properly */
     }
 
     /* Keep the right panel a fixed-ish column */
-    .columns > .column.is-3 {
+    .pf-v6-l-grid__item.pf-m-3-col-on-lg {
         flex: 0 0 360px; /* slightly wider panel on large screens */
     }
 
@@ -1111,22 +1099,19 @@ main {
 }
 
 /* Datacenter Panel Styles */
-.datacenter-panel {
+/* Datacenter panel styles */
+.datacenter-panel.pf-v6-c-card {
     background: #ffffff;
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border: 1px solid #d2d2d2;
     height: calc(100vh - 120px);
     overflow-y: auto;
 }
 
-.datacenter-panel .title {
-    color: #151515;
-    margin-bottom: 12px;
+.datacenter-panel .pf-v6-c-title {
+    color: var(--pf-t--global--text--color--regular, #151515);
+    margin-bottom: var(--pf-t--global--spacer--md, 12px);
     font-weight: 600;
-    border-bottom: 2px solid #e5e5e5;
-    padding-bottom: 6px;
+    border-bottom: 2px solid var(--pf-t--global--border--color--default, #e5e5e5);
+    padding-bottom: var(--pf-t--global--spacer--xs, 6px);
     font-size: 18px;
 }
 
@@ -1375,7 +1360,7 @@ main {
 }
 
 @media (max-width: 1024px) {
-    .columns {
+    .pf-v6-l-grid.pf-m-gutter {
         flex-direction: column;
     }
     

@@ -1886,9 +1886,9 @@ class StockholmDatacentersMap {
         const demoBtn = document.getElementById('demo-migrate');
         const testForceBtn = document.getElementById('test-force-graphs');
 
-        // apply Bulma button classes
+        // apply PatternFly button classes
         [toggleBtn, centerBtn, triggerBtn, demoBtn, testForceBtn].forEach(b => {
-            if (b) b.classList.add('button', 'is-small');
+            if (b) b.classList.add('pf-v6-c-button', 'pf-m-small');
         });
 
         toggleBtn.addEventListener('click', () => {

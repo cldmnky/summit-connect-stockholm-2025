@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stockholm Datacenters Map</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/@patternfly/patternfly@6/patternfly.css">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -15,72 +15,78 @@
 </head>
 
 <body>
-    <section class="section">
-        <div class="container app-container">
-            <header class="has-text-centered">
-                <h1 class="title is-3">Stockholm County Datacenters</h1>
-                <p class="subtitle is-6">Interactive map showing datacenter locations and VM distribution</p>
+    <div class="pf-v6-c-page">
+        <div class="pf-v6-c-page__main-section">
+            <header class="pf-v6-c-page__main-section pf-m-light">
+                <div class="pf-v6-c-content">
+                    <h1 class="pf-v6-c-title pf-m-3xl">Stockholm County Datacenters</h1>
+                    <p class="pf-v6-c-content">Interactive map showing datacenter locations and VM distribution</p>
+                </div>
             </header>
 
-            <main>
-                <div class="columns" style="margin: 0;">
-                    <div class="column is-9" style="padding: 0 8px 0 0;">
-                        <div class="map-container box" style="margin: 0;">
-                            <div id="map"></div>
-                            <div class="legend">
-                                <div class="legend-item">
-                                    <div class="legend-symbol datacenter"></div>
-                                    <span>Datacenter</span>
+            <main class="pf-v6-c-page__main-section pf-m-fill">
+                <div class="pf-v6-l-grid pf-m-gutter" style="margin: 0;">
+                    <div class="pf-v6-l-grid__item pf-m-9-col-on-lg" style="padding: 0 8px 0 0;">
+                        <div class="pf-v6-c-card map-container" style="margin: 0;">
+                            <div class="pf-v6-c-card__body">
+                                <div id="map"></div>
+                                <div class="legend">
+                                    <div class="legend-item">
+                                        <div class="legend-symbol datacenter"></div>
+                                        <span>Datacenter</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-symbol vm-indicator"></div>
+                                        <span>VM Activity</span>
+                                    </div>
                                 </div>
-                                <div class="legend-item">
-                                    <div class="legend-symbol vm-indicator"></div>
-                                    <span>VM Activity</span>
+                                <div class="map-controls">
+                                    <button id="toggle-satellite" class="pf-v6-c-button pf-m-secondary pf-m-small map-control-btn">Street View</button>
+                                    <button id="center-map" class="pf-v6-c-button pf-m-secondary pf-m-small map-control-btn">Center Map</button>
                                 </div>
-                            </div>
-                            <div class="map-controls">
-                                <button id="toggle-satellite" class="map-control-btn">Street View</button>
-                                <button id="center-map" class="map-control-btn">Center Map</button>
-                            </div>
 
-                            <!-- (Active VMs moved to the right column) -->
+                                <!-- (Active VMs moved to the right column) -->
 
-                            <div class="overlay overlay-top-right" id="stats-panel">
-                                <div class="box stats">
-                                    <div class="columns is-mobile">
-                                        <div class="column has-text-centered">
-                                            <span class="stat-value" id="total-vms">0</span>
-                                            <div class="stat-label">Total VMs</div>
-                                        </div>
-                                        <div class="column has-text-centered">
-                                            <span class="stat-value" id="active-datacenters">2</span>
-                                            <div class="stat-label">Active Datacenters</div>
+                                <div class="overlay overlay-top-right" id="stats-panel">
+                                    <div class="pf-v6-c-card stats">
+                                        <div class="pf-v6-l-grid pf-m-gutter">
+                                            <div class="pf-v6-l-grid__item pf-m-6-col">
+                                                <span class="stat-value" id="total-vms">0</span>
+                                                <div class="stat-label">Total VMs</div>
+                                            </div>
+                                            <div class="pf-v6-l-grid__item pf-m-6-col">
+                                                <span class="stat-value" id="active-datacenters">2</span>
+                                                <div class="stat-label">Active Datacenters</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="column is-3" style="padding: 0 0 0 8px;">
-                        <div class="datacenter-panel box" style="margin: 0;">
-                            <h3 class="title is-5">Datacenter Overview</h3>
-                            <div id="datacenter-view" class="datacenter-view">
+                    <div class="pf-v6-l-grid__item pf-m-3-col-on-lg" style="padding: 0 0 0 8px;">
+                        <div class="pf-v6-c-card datacenter-panel" style="margin: 0;">
+                            <div class="pf-v6-c-card__header">
+                                <h3 class="pf-v6-c-title pf-m-lg">Datacenter Overview</h3>
+                            </div>
+                            <div class="pf-v6-c-card__body" id="datacenter-view" class="datacenter-view">
                                 <!-- Datacenter details will be populated here -->
                             </div>
 
                             <hr />
 
                             <div class="vm-list-panel">
-                                <h4 class="title is-6">Active VMs</h4>
+                                <h4 class="pf-v6-c-title pf-m-md">Active VMs</h4>
                                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
                                     <div style="display:flex; gap:8px; align-items:center;">
                                         <label style="font-size:12px; color:#666;">Show:</label>
-                                        <select id="vm-filter-mode" style="font-size:12px; padding:4px;">
+                                        <select id="vm-filter-mode" class="pf-v6-c-form-control" style="font-size:12px; padding:4px;">
                                             <option value="all">All VMs</option>
                                             <option value="migrating">Only Migrating</option>
                                         </select>
                                     </div>
                                     <label style="font-size:12px; color:#666; display:flex; align-items:center; gap:6px;">
-                                        <input type="checkbox" id="vm-hide-inactive" checked /> Hide inactive
+                                        <input type="checkbox" id="vm-hide-inactive" class="pf-v6-c-check__input" checked /> Hide inactive
                                     </label>
                                 </div>
                                 <div class="vm-list">
@@ -93,17 +99,17 @@
                             <hr />
 
                             <div class="migration-panel">
-                                <h4 class="title is-6">Active Migrations</h4>
+                                <h4 class="pf-v6-c-title pf-m-md">Active Migrations</h4>
                                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
                                     <div style="display:flex; gap:8px; align-items:center;">
                                         <label style="font-size:12px; color:#666;">Show:</label>
-                                        <select id="migration-filter-mode" style="font-size:12px; padding:4px;">
+                                        <select id="migration-filter-mode" class="pf-v6-c-form-control" style="font-size:12px; padding:4px;">
                                             <option value="active">Active Only</option>
                                             <option value="all">All Migrations</option>
                                             <option value="completed">Completed</option>
                                         </select>
                                     </div>
-                                    <button id="refresh-migrations" style="font-size:11px; padding:2px 8px; border:1px solid #ccc; background:#f9f9f9; border-radius:3px; cursor:pointer;">
+                                    <button id="refresh-migrations" class="pf-v6-c-button pf-m-link" style="font-size:11px;">
                                         Refresh
                                     </button>
                                 </div>
@@ -121,7 +127,7 @@
                 </div>
             </main>
         </div>
-    </section>
+    </div>
 
     <div class="tooltip" id="tooltip"></div>
     <div id="toast" class="toast" aria-live="polite" role="status" style="display:none"></div>
