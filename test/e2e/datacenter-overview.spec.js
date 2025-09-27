@@ -6,10 +6,10 @@ test.describe('Datacenter overview and interactions', () => {
   test('datacenter panel displays correctly', async ({ page }) => {
     await page.goto(BASE_URL);
 
-    await page.waitForSelector('.datacenter-panel', { timeout: 5000 });
+    await page.waitForSelector('.sidebar-panels', { timeout: 5000 });
 
     // Datacenter panel should be visible
-    await expect(page.locator('.datacenter-panel')).toBeVisible();
+    await expect(page.locator('.sidebar-panels')).toBeVisible();
     
     // Should have datacenter overview section
     await expect(page.locator('#datacenter-view')).toBeVisible();
@@ -72,8 +72,8 @@ test.describe('Datacenter overview and interactions', () => {
     await page.waitForSelector('.pf-v6-l-grid', { timeout: 5000 });
     
     // Both columns should be visible on desktop - updated for PatternFly
-    await expect(page.locator('.pf-v6-l-grid__item.pf-m-9-col-on-lg')).toBeVisible(); // Map column
-    await expect(page.locator('.pf-v6-l-grid__item.pf-m-3-col-on-lg')).toBeVisible(); // Sidebar column
+    await expect(page.locator('.pf-v6-l-grid__item.pf-m-8-col-on-lg')).toBeVisible(); // Map column
+    await expect(page.locator('.pf-v6-l-grid__item.pf-m-4-col-on-lg')).toBeVisible(); // Sidebar column
     
     // Test tablet size
     await page.setViewportSize({ width: 768, height: 600 });
@@ -127,7 +127,7 @@ test.describe('Datacenter overview and interactions', () => {
     await page.goto(BASE_URL);
     
     // Wait for the page to load
-    await page.waitForSelector('.datacenter-panel');
+    await page.waitForSelector('.sidebar-panels');
     
     // Find and click on a datacenter header (this should show the detailed view)
     const datacenterHeaders = page.locator('.datacenter-header');

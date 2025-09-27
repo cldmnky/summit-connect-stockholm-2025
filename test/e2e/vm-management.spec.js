@@ -6,10 +6,10 @@ test.describe('VM management and filtering', () => {
   test('VM list panel loads with proper controls', async ({ page }) => {
     await page.goto(BASE_URL);
 
-    await page.waitForSelector('.vm-list-panel', { timeout: 5000 });
+    await page.waitForSelector('.sidebar-panels', { timeout: 5000 });
 
     // VM panel should be visible
-    await expect(page.locator('.vm-list-panel')).toBeVisible();
+    await expect(page.locator('.sidebar-panels')).toBeVisible();
     
     // Should have VM filter dropdown
     const vmFilter = page.locator('#vm-filter-mode');

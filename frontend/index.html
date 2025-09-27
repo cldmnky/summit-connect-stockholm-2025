@@ -26,9 +26,13 @@
             </header>
 
             <main class="pf-v6-c-page__main-section pf-m-fill">
-                <div class="pf-v6-l-grid pf-m-gutter" style="margin: 0;">
-                    <div class="pf-v6-l-grid__item pf-m-9-col-on-lg" style="padding: 0 8px 0 0;">
-                        <div class="pf-v6-c-card map-container" style="margin: 0;">
+                <div class="pf-v6-l-grid pf-m-gutter openshift-layout">
+                    <!-- Main content area -->
+                    <div class="pf-v6-l-grid__item pf-m-8-col-on-lg pf-m-12-col-on-md">
+                        <div class="pf-v6-c-card map-container">
+                            <div class="pf-v6-c-card__title">
+                                <h2 class="pf-v6-c-title pf-m-lg">Datacenter Topology</h2>
+                            </div>
                             <div class="pf-v6-c-card__body">
                                 <div id="map"></div>
                                 <div class="legend">
@@ -42,58 +46,74 @@
                                     </div>
                                 </div>
                                 <div class="map-controls">
-                                    <button id="toggle-satellite" class="pf-v6-c-button pf-m-secondary pf-m-small map-control-btn">Street View</button>
-                                    <button id="center-map" class="pf-v6-c-button pf-m-secondary pf-m-small map-control-btn">Center Map</button>
+                                    <button id="toggle-satellite" class="pf-v6-c-button pf-m-secondary pf-m-small">Street View</button>
+                                    <button id="center-map" class="pf-v6-c-button pf-m-secondary pf-m-small">Center Map</button>
                                 </div>
-
-                                <!-- (Active VMs moved to the right column) -->
                             </div>
                         </div>
                     </div>
-                    <div class="pf-v6-l-grid__item pf-m-3-col-on-lg" style="padding: 0 0 0 8px;">
-                        <div class="pf-v6-c-card datacenter-panel" style="margin: 0;">
-                            <div class="pf-v6-c-card__header collapsible-header" data-target="datacenter-overview">
-                                <div class="collapsible-title">
-                                    <h3 class="pf-v6-c-title pf-m-lg">Datacenter Overview</h3>
-                                    <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle datacenter overview">
-                                        <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                                    </button>
+
+                    <!-- Sidebar panels -->
+                    <div class="pf-v6-l-grid__item pf-m-4-col-on-lg pf-m-12-col-on-md">
+                        <div class="sidebar-panels">
+                            <!-- Datacenter Overview Panel -->
+                            <div class="pf-v6-c-card panel-card">
+                                <div class="pf-v6-c-card__header collapsible-header" data-target="datacenter-overview">
+                                    <div class="collapsible-title">
+                                        <div class="pf-v6-c-card__header-main">
+                                            <h3 class="pf-v6-c-card__title">Datacenter Overview</h3>
+                                        </div>
+                                        <div class="pf-v6-c-card__actions">
+                                            <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle datacenter overview">
+                                                <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="pf-v6-c-card__body collapsible-content datacenter-view" id="datacenter-view" data-section="datacenter-overview">
-                                <!-- Datacenter details will be populated here -->
+                                <div class="pf-v6-c-card__body collapsible-content datacenter-view" id="datacenter-view" data-section="datacenter-overview">
+                                    <!-- Datacenter details will be populated here -->
+                                </div>
                             </div>
 
-                            <div class="vm-list-panel">
-                                <div class="collapsible-header" data-target="active-vms">
+                            <!-- Active VMs Panel -->
+                            <div class="pf-v6-c-card panel-card">
+                                <div class="pf-v6-c-card__header collapsible-header" data-target="active-vms">
                                     <div class="collapsible-title">
-                                        <div class="title-with-count">
-                                            <h4 class="pf-v6-c-title pf-m-md">Active VMs</h4>
-                                            <span class="count-badge" id="vm-count-badge">0</span>
+                                        <div class="pf-v6-c-card__header-main">
+                                            <div class="title-with-count">
+                                                <h3 class="pf-v6-c-card__title">Active VMs</h3>
+                                                <span class="count-badge" id="vm-count-badge">0</span>
+                                            </div>
                                         </div>
-                                        <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle active VMs">
-                                            <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                                        </button>
+                                        <div class="pf-v6-c-card__actions">
+                                            <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle active VMs">
+                                                <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="collapsible-content" data-section="active-vms">
-                                    <div class="filter-controls">
-                                        <div class="filter-group">
-                                            <label>Show:</label>
-                                            <select id="vm-filter-mode" class="pf-v6-c-form-control pf-m-small">
-                                                <option value="all">All VMs</option>
-                                                <option value="migrating">Only Migrating</option>
-                                            </select>
+                                <div class="pf-v6-c-card__body collapsible-content" data-section="active-vms">
+                                    <div class="filter-section">
+                                        <div class="filter-controls">
+                                            <div class="filter-group">
+                                                <label class="pf-v6-c-form__label">Show:</label>
+                                                <select id="vm-filter-mode" class="pf-v6-c-form-control pf-m-small">
+                                                    <option value="all">All VMs</option>
+                                                    <option value="migrating">Only Migrating</option>
+                                                </select>
+                                            </div>
+                                            <div class="pf-v6-c-check">
+                                                <input type="checkbox" id="vm-hide-inactive" class="pf-v6-c-check__input" checked /> 
+                                                <label for="vm-hide-inactive" class="pf-v6-c-check__label">Hide inactive</label>
+                                            </div>
                                         </div>
-                                        <label>
-                                            <input type="checkbox" id="vm-hide-inactive" class="pf-v6-c-check__input" checked /> 
-                                            Hide inactive
-                                        </label>
+                                        <div class="search-controls">
+                                            <div class="pf-v6-c-form__group">
+                                                <input type="text" id="vm-name-filter" class="pf-v6-c-form-control" placeholder="Filter by VM name..." />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="search-controls">
-                                        <input type="text" id="vm-name-filter" class="pf-v6-c-form-control pf-m-small" placeholder="Filter by VM name..." />
-                                    </div>
-                                    <div class="vm-list">
+                                    <div class="content-section">
                                         <div class="vm-list-rows" id="vm-list-rows">
                                             <!-- VM rows populated by app.js -->
                                         </div>
@@ -101,37 +121,45 @@
                                 </div>
                             </div>
 
-                            <div class="migration-panel">
-                                <div class="collapsible-header" data-target="active-migrations">
+                            <!-- Active Migrations Panel -->
+                            <div class="pf-v6-c-card panel-card">
+                                <div class="pf-v6-c-card__header collapsible-header" data-target="active-migrations">
                                     <div class="collapsible-title">
-                                        <div class="title-with-count">
-                                            <h4 class="pf-v6-c-title pf-m-md">Active Migrations</h4>
-                                            <span class="count-badge" id="migration-count-badge">0</span>
+                                        <div class="pf-v6-c-card__header-main">
+                                            <div class="title-with-count">
+                                                <h3 class="pf-v6-c-card__title">Active Migrations</h3>
+                                                <span class="count-badge" id="migration-count-badge">0</span>
+                                            </div>
                                         </div>
-                                        <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle active migrations">
-                                            <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                                        </button>
+                                        <div class="pf-v6-c-card__actions">
+                                            <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle active migrations">
+                                                <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="collapsible-content" data-section="active-migrations">
-                                    <div class="filter-controls">
-                                        <div class="filter-group">
-                                            <label>Show:</label>
-                                            <select id="migration-filter-mode" class="pf-v6-c-form-control pf-m-small">
-                                                <option value="active">Active Only</option>
-                                                <option value="all">All Migrations</option>
-                                                <option value="completed">Completed</option>
-                                            </select>
+                                <div class="pf-v6-c-card__body collapsible-content" data-section="active-migrations">
+                                    <div class="filter-section">
+                                        <div class="filter-controls">
+                                            <div class="filter-group">
+                                                <label class="pf-v6-c-form__label">Show:</label>
+                                                <select id="migration-filter-mode" class="pf-v6-c-form-control pf-m-small">
+                                                    <option value="active">Active Only</option>
+                                                    <option value="all">All Migrations</option>
+                                                    <option value="completed">Completed</option>
+                                                </select>
+                                            </div>
+                                            <button id="refresh-migrations" class="pf-v6-c-button pf-m-link pf-m-small">
+                                                <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                                                Refresh
+                                            </button>
                                         </div>
-                                        <button id="refresh-migrations" class="pf-v6-c-button pf-m-link pf-m-small">
-                                            Refresh
-                                        </button>
                                     </div>
-                                    <div class="migration-list">
+                                    <div class="content-section">
                                         <div class="migration-list-rows" id="migration-list-rows">
                                             <!-- Migration rows populated by app.js -->
                                             <div class="empty-state">
-                                                <p style="font-size:12px; color:var(--pf-v6-global--Color--dark-100); text-align:center; padding:10px;">No active migrations</p>
+                                                <p class="pf-v6-c-content">No active migrations</p>
                                             </div>
                                         </div>
                                     </div>

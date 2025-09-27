@@ -7,10 +7,10 @@ test.describe('Migration functionality', () => {
     await page.goto(BASE_URL);
 
     // Wait for migration panel to load
-    await page.waitForSelector('.migration-panel', { timeout: 5000 });
+    await page.waitForSelector('.sidebar-panels', { timeout: 5000 });
 
     // Migration panel should be visible
-    await expect(page.locator('.migration-panel')).toBeVisible();
+    await expect(page.locator('.sidebar-panels')).toBeVisible();
     
     // Should have migration filter dropdown
     const filterSelect = page.locator('#migration-filter-mode');
@@ -84,7 +84,7 @@ test.describe('Migration functionality', () => {
   test('migration overlays only show for active migrations', async ({ page }) => {
     await page.goto(BASE_URL);
     
-    await page.waitForSelector('.migration-panel', { timeout: 5000 });
+    await page.waitForSelector('.sidebar-panels', { timeout: 5000 });
     
     // Set filter to only show completed migrations
     const filterSelect = page.locator('#migration-filter-mode');
