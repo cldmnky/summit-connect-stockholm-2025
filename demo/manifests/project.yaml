@@ -1,0 +1,22 @@
+apiVersion: tower.ansible.com/v1alpha1
+kind: AnsibleProject
+metadata:
+  name: summit-connect
+  namespace: aap
+spec:
+  name: summit-connect
+  organization: Default
+  scm_type: git
+  repo: 'https://github.com/cldmnky/summit-connect-stockholm-2025.git'
+  branch: main
+  description: "Summit Connect demo project"
+  # REQUIRED: Kubernetes Secret containing an AWX access token (see README or operator docs)
+  connection_secret: awx-connection-token
+
+  # Optional: if your git repo is private, reference an SCM credential managed in AWX
+  # scm_credential: my-git-credential
+
+  # Optional runner configuration (fill if you want to pin runner image/version)
+  # runner_image: quay.io/ansible/runner:latest
+  # runner_version: "2.4"
+  # runner_pull_policy: IfNotPresent
