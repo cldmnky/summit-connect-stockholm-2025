@@ -2496,18 +2496,27 @@ class StockholmDatacentersMap {
     }
 
     setupCollapsiblePanels() {
+        console.log('[DEBUG] Setting up collapsible panels...');
+        
         // Get all collapsible headers
         const collapsibleHeaders = document.querySelectorAll('.collapsible-header');
+        console.log(`[DEBUG] Found ${collapsibleHeaders.length} collapsible headers`);
         
         // Load saved collapse states from localStorage
         const savedStates = JSON.parse(localStorage.getItem('collapsiblePanelStates') || '{}');
+        console.log('[DEBUG] Saved states:', savedStates);
         
-        collapsibleHeaders.forEach(header => {
+        collapsibleHeaders.forEach((header, index) => {
             const target = header.getAttribute('data-target');
             const content = document.querySelector(`[data-section="${target}"]`);
             const toggle = header.querySelector('.collapse-toggle');
             
-            if (!content || !toggle) return;
+            console.log(`[DEBUG] Panel ${index}: target="${target}", content=${!!content}, toggle=${!!toggle}`);
+            
+            if (!content || !toggle) {
+                console.warn(`[DEBUG] Missing elements for panel ${target}:`, { content: !!content, toggle: !!toggle });
+                return;
+            }
             
             // Apply saved state or default behavior:
             // - datacenter-overview: expanded by default (for backward compatibility)
@@ -2525,14 +2534,18 @@ class StockholmDatacentersMap {
             }
             
             // Add click handler
+            console.log(`[DEBUG] Adding click handler to panel ${target}`);
             header.addEventListener('click', (e) => {
+                console.log(`[DEBUG] Panel ${target} clicked!`);
                 e.preventDefault();
                 e.stopPropagation();
                 
                 const isCurrentlyCollapsed = header.classList.contains('collapsed');
+                console.log(`[DEBUG] Panel ${target} isCurrentlyCollapsed: ${isCurrentlyCollapsed}`);
                 
                 if (isCurrentlyCollapsed) {
                     // Expand
+                    console.log(`[DEBUG] Expanding panel ${target}`);
                     header.classList.remove('collapsed');
                     content.classList.remove('collapsed');
                     savedStates[target] = false;
@@ -2548,6 +2561,7 @@ class StockholmDatacentersMap {
                     content.style.removeProperty('overflow');
                 } else {
                     // Collapse
+                    console.log(`[DEBUG] Collapsing panel ${target}`);
                     header.classList.add('collapsed');
                     content.classList.add('collapsed');
                     savedStates[target] = true;
