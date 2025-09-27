@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stockholm Datacenters Map</title>
     <link rel="stylesheet" href="https://unpkg.com/@patternfly/patternfly@6/patternfly.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -51,55 +52,78 @@
                     </div>
                     <div class="pf-v6-l-grid__item pf-m-3-col-on-lg" style="padding: 0 0 0 8px;">
                         <div class="pf-v6-c-card datacenter-panel" style="margin: 0;">
-                            <div class="pf-v6-c-card__header">
-                                <h3 class="pf-v6-c-title pf-m-lg">Datacenter Overview</h3>
+                            <div class="pf-v6-c-card__header collapsible-header" data-target="datacenter-overview">
+                                <div class="collapsible-title">
+                                    <h3 class="pf-v6-c-title pf-m-lg">Datacenter Overview</h3>
+                                    <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle datacenter overview">
+                                        <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div class="pf-v6-c-card__body" id="datacenter-view" class="datacenter-view">
+                            <div class="pf-v6-c-card__body collapsible-content datacenter-view" id="datacenter-view" data-section="datacenter-overview">
                                 <!-- Datacenter details will be populated here -->
                             </div>
 
                             <div class="vm-list-panel">
-                                <h4 class="pf-v6-c-title pf-m-md">Active VMs</h4>
-                                <div class="filter-controls">
-                                    <div class="filter-group">
-                                        <label>Show:</label>
-                                        <select id="vm-filter-mode" class="pf-v6-c-form-control pf-m-small">
-                                            <option value="all">All VMs</option>
-                                            <option value="migrating">Only Migrating</option>
-                                        </select>
+                                <div class="collapsible-header" data-target="active-vms">
+                                    <div class="collapsible-title">
+                                        <h4 class="pf-v6-c-title pf-m-md">Active VMs</h4>
+                                        <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle active VMs">
+                                            <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                        </button>
                                     </div>
-                                    <label>
-                                        <input type="checkbox" id="vm-hide-inactive" class="pf-v6-c-check__input" checked /> 
-                                        Hide inactive
-                                    </label>
                                 </div>
-                                <div class="vm-list">
-                                    <div class="vm-list-rows" id="vm-list-rows">
-                                        <!-- VM rows populated by app.js -->
+                                <div class="collapsible-content" data-section="active-vms">
+                                    <div class="filter-controls">
+                                        <div class="filter-group">
+                                            <label>Show:</label>
+                                            <select id="vm-filter-mode" class="pf-v6-c-form-control pf-m-small">
+                                                <option value="all">All VMs</option>
+                                                <option value="migrating">Only Migrating</option>
+                                            </select>
+                                        </div>
+                                        <label>
+                                            <input type="checkbox" id="vm-hide-inactive" class="pf-v6-c-check__input" checked /> 
+                                            Hide inactive
+                                        </label>
+                                    </div>
+                                    <div class="vm-list">
+                                        <div class="vm-list-rows" id="vm-list-rows">
+                                            <!-- VM rows populated by app.js -->
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="migration-panel">
-                                <h4 class="pf-v6-c-title pf-m-md">Active Migrations</h4>
-                                <div class="filter-controls">
-                                    <div class="filter-group">
-                                        <label>Show:</label>
-                                        <select id="migration-filter-mode" class="pf-v6-c-form-control pf-m-small">
-                                            <option value="active">Active Only</option>
-                                            <option value="all">All Migrations</option>
-                                            <option value="completed">Completed</option>
-                                        </select>
+                                <div class="collapsible-header" data-target="active-migrations">
+                                    <div class="collapsible-title">
+                                        <h4 class="pf-v6-c-title pf-m-md">Active Migrations</h4>
+                                        <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle active migrations">
+                                            <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                        </button>
                                     </div>
-                                    <button id="refresh-migrations" class="pf-v6-c-button pf-m-link pf-m-small">
-                                        Refresh
-                                    </button>
                                 </div>
-                                <div class="migration-list">
-                                    <div class="migration-list-rows" id="migration-list-rows">
-                                        <!-- Migration rows populated by app.js -->
-                                        <div class="empty-state">
-                                            <p style="font-size:12px; color:var(--pf-v6-global--Color--dark-100); text-align:center; padding:10px;">No active migrations</p>
+                                <div class="collapsible-content" data-section="active-migrations">
+                                    <div class="filter-controls">
+                                        <div class="filter-group">
+                                            <label>Show:</label>
+                                            <select id="migration-filter-mode" class="pf-v6-c-form-control pf-m-small">
+                                                <option value="active">Active Only</option>
+                                                <option value="all">All Migrations</option>
+                                                <option value="completed">Completed</option>
+                                            </select>
+                                        </div>
+                                        <button id="refresh-migrations" class="pf-v6-c-button pf-m-link pf-m-small">
+                                            Refresh
+                                        </button>
+                                    </div>
+                                    <div class="migration-list">
+                                        <div class="migration-list-rows" id="migration-list-rows">
+                                            <!-- Migration rows populated by app.js -->
+                                            <div class="empty-state">
+                                                <p style="font-size:12px; color:var(--pf-v6-global--Color--dark-100); text-align:center; padding:10px;">No active migrations</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

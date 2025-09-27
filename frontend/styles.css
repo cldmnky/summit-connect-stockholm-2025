@@ -1236,6 +1236,13 @@ input:focus {
     padding: 16px; /* Add consistent padding */
 }
 
+/* Ensure datacenter view is visible by default */
+.datacenter-view:not(.collapsed) {
+    display: flex;
+    max-height: none;
+    opacity: 1;
+}
+
 .empty-state {
     text-align: center;
     padding: 20px; /* Reduced padding */
@@ -1560,6 +1567,116 @@ input:focus {
     margin-bottom: 12px; /* Consistent with VM panel */
     font-weight: 600;
     font-size: 14px; /* Consistent with VM panel */
+}
+
+/* Collapsible functionality styles */
+.collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+    padding: 8px 0;
+    position: relative;
+    z-index: 1;
+}
+
+.collapsible-header:hover {
+    background-color: rgba(0, 102, 204, 0.05);
+}
+
+.collapsible-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.collapsible-title .pf-v6-c-title {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.collapse-toggle {
+    background: none !important;
+    border: none !important;
+    color: var(--pf-v6-global--Color--dark-100);
+    padding: 4px !important;
+    margin: 0 !important;
+    min-height: auto !important;
+    width: auto !important;
+    height: auto !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, color 0.2s ease;
+    pointer-events: none; /* Prevent interference with parent click handler */
+}
+
+.collapse-toggle:hover {
+    color: var(--pf-v6-global--primary-color--100);
+    background: none !important;
+}
+
+.collapse-toggle i {
+    font-size: 12px;
+    transition: transform 0.3s ease;
+}
+
+.collapsible-header.collapsed .collapse-toggle i {
+    transform: rotate(-90deg);
+}
+
+.collapsible-content {
+    transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+    max-height: none; /* Allow natural height by default */
+    opacity: 1;
+    overflow: visible; /* Default to visible overflow */
+}
+
+.collapsible-content.collapsed {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* Specific adjustments for different panels */
+.datacenter-panel .pf-v6-c-card__header.collapsible-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100);
+    background: var(--pf-v6-global--BackgroundColor--100);
+}
+
+.vm-list-panel .collapsible-header {
+    padding: 0 0 8px 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100);
+}
+
+.migration-panel .collapsible-header {
+    padding: 0 0 8px 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100);
+}
+
+/* Adjust content padding when collapsed */
+.vm-list-panel .collapsible-content {
+    padding-top: 0;
+}
+
+.migration-panel .collapsible-content {
+    padding-top: 0;
+}
+
+/* Prevent collapsible headers from interfering with datacenter card clicks */
+.datacenter-card {
+    position: relative;
+    z-index: 2; /* Higher than collapsible headers */
+}
+
+.datacenter-header {
+    position: relative;
+    z-index: 3; /* Highest for clickable datacenter elements */
 }
 
 .migration-list {

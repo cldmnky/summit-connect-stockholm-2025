@@ -1937,6 +1937,9 @@ class StockholmDatacentersMap {
         // Migration controls
         this.setupMigrationControls();
 
+        // Collapsible sidebar panels
+        this.setupCollapsiblePanels();
+
         // Add test function to window for demo purposes
         const self = this;
         window.testMigrationNotification = function() {
@@ -2312,6 +2315,56 @@ class StockholmDatacentersMap {
                 refreshBtn.disabled = false;
             });
         }
+    }
+
+    setupCollapsiblePanels() {
+        // Get all collapsible headers
+        const collapsibleHeaders = document.querySelectorAll('.collapsible-header');
+        
+        // Load saved collapse states from localStorage
+        const savedStates = JSON.parse(localStorage.getItem('collapsiblePanelStates') || '{}');
+        
+        collapsibleHeaders.forEach(header => {
+            const target = header.getAttribute('data-target');
+            const content = document.querySelector(`[data-section="${target}"]`);
+            const toggle = header.querySelector('.collapse-toggle');
+            
+            if (!content || !toggle) return;
+            
+            // Apply saved state or default behavior:
+            // - datacenter-overview: expanded by default (for backward compatibility)
+            // - other panels: can be collapsed
+            const defaultCollapsed = target !== 'datacenter-overview' ? false : false; // All expanded by default
+            const isCollapsed = savedStates.hasOwnProperty(target) ? savedStates[target] : defaultCollapsed;
+            
+            if (isCollapsed) {
+                header.classList.add('collapsed');
+                content.classList.add('collapsed');
+            }
+            
+            // Add click handler
+            header.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const isCurrentlyCollapsed = header.classList.contains('collapsed');
+                
+                if (isCurrentlyCollapsed) {
+                    // Expand
+                    header.classList.remove('collapsed');
+                    content.classList.remove('collapsed');
+                    savedStates[target] = false;
+                } else {
+                    // Collapse
+                    header.classList.add('collapsed');
+                    content.classList.add('collapsed');
+                    savedStates[target] = true;
+                }
+                
+                // Save state to localStorage
+                localStorage.setItem('collapsiblePanelStates', JSON.stringify(savedStates));
+            });
+        });
     }
 
 }
