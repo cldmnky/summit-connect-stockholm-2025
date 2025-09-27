@@ -22,6 +22,11 @@ class StockholmDatacentersMap {
         this.initMap();
         this.addDatacenters();
         this.setupControls();
+        
+        // Initialize count badges
+        this.updateVMCountBadge(0, 0);
+        this.updateMigrationCountBadge(0, 0);
+        
         this.renderGlobalVMList();
         this.renderDatacenterView();
         this.updateStats();
@@ -243,15 +248,22 @@ class StockholmDatacentersMap {
         // Apply configurable filters
         const filterModeEl = document.getElementById('vm-filter-mode');
         const hideInactiveEl = document.getElementById('vm-hide-inactive');
+        const nameFilterEl = document.getElementById('vm-name-filter');
 
         // Load saved preferences if controls aren't present yet
         const savedMode = localStorage.getItem('vmFilterMode');
         const savedHide = localStorage.getItem('vmHideInactive');
+        const savedNameFilter = localStorage.getItem('vmNameFilter');
         if (filterModeEl && savedMode) filterModeEl.value = savedMode;
         if (hideInactiveEl && savedHide !== null) hideInactiveEl.checked = savedHide === 'true';
+        if (nameFilterEl && savedNameFilter !== null) nameFilterEl.value = savedNameFilter;
 
         const mode = (filterModeEl && filterModeEl.value) || savedMode || 'all';
         const hideInactive = (hideInactiveEl && hideInactiveEl.checked) || (savedHide === 'true');
+        const nameFilter = (nameFilterEl && nameFilterEl.value) || savedNameFilter || '';
+
+        // Store total VM count before filtering for badge update
+        const totalVMCount = vms.length;
 
         // If hiding inactive, filter them out
         if (hideInactive) {
@@ -268,6 +280,19 @@ class StockholmDatacentersMap {
         if (mode === 'migrating') {
             vms = vms.filter(vm => vm.migrationStatus === 'migrating' || vm.status === 'migrating' || vm.status === 'waitingforreceiver');
         }
+
+        // Name-based filtering
+        if (nameFilter.trim()) {
+            const filterLower = nameFilter.trim().toLowerCase();
+            vms = vms.filter(vm => {
+                const vmName = (vm.name || vm.id || '').toLowerCase();
+                return vmName.includes(filterLower);
+            });
+        }
+
+        // Update VM count badge
+        this.updateVMCountBadge(vms.length, totalVMCount);
+
         console.log('[DEBUG] renderGlobalVMList called with', vms.length, 'VMs');
 
         // Sort by latest migration timestamp first. If no _lastMigratedAt, keep existing order.
@@ -1921,6 +1946,8 @@ class StockholmDatacentersMap {
         // VM list filter controls
         const vmFilterMode = document.getElementById('vm-filter-mode');
         const vmHideInactive = document.getElementById('vm-hide-inactive');
+        const vmNameFilter = document.getElementById('vm-name-filter');
+        
         if (vmFilterMode) {
             vmFilterMode.addEventListener('change', () => {
                 localStorage.setItem('vmFilterMode', vmFilterMode.value);
@@ -1931,6 +1958,26 @@ class StockholmDatacentersMap {
             vmHideInactive.addEventListener('change', () => {
                 localStorage.setItem('vmHideInactive', vmHideInactive.checked ? 'true' : 'false');
                 this.renderGlobalVMList();
+            });
+        }
+        if (vmNameFilter) {
+            // Add debounced input event listener for better performance
+            let debounceTimer;
+            vmNameFilter.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    localStorage.setItem('vmNameFilter', vmNameFilter.value);
+                    this.renderGlobalVMList();
+                }, 300); // 300ms delay
+            });
+            
+            // Also handle Enter key for immediate search
+            vmNameFilter.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    clearTimeout(debounceTimer);
+                    localStorage.setItem('vmNameFilter', vmNameFilter.value);
+                    this.renderGlobalVMList();
+                }
             });
         }
 
@@ -2220,6 +2267,43 @@ class StockholmDatacentersMap {
         }).join('');
 
         migrationContainer.innerHTML = migrationRows;
+
+        // Update migration count badge
+        this.updateMigrationCountBadge(filteredMigrations.length, this.migrations.length);
+    }
+
+    updateVMCountBadge(displayedCount, totalCount) {
+        const badge = document.getElementById('vm-count-badge');
+        if (badge) {
+            badge.textContent = displayedCount;
+            badge.setAttribute('data-count', displayedCount);
+            badge.title = `Showing ${displayedCount} VMs`;
+            
+            // Update badge color based on filter status
+            if (displayedCount < totalCount) {
+                badge.style.background = 'var(--pf-v6-global--warning-color--100)';
+                badge.title = `Showing ${displayedCount} of ${totalCount} VMs (filtered)`;
+            } else {
+                badge.style.background = 'var(--pf-v6-global--primary-color--100)';
+            }
+        }
+    }
+
+    updateMigrationCountBadge(displayedCount, totalCount) {
+        const badge = document.getElementById('migration-count-badge');
+        if (badge) {
+            badge.textContent = displayedCount;
+            badge.setAttribute('data-count', displayedCount);
+            badge.title = `Showing ${displayedCount} migrations`;
+            
+            // Update badge color based on filter status
+            if (displayedCount < totalCount) {
+                badge.style.background = 'var(--pf-v6-global--warning-color--100)';
+                badge.title = `Showing ${displayedCount} of ${totalCount} migrations (filtered)`;
+            } else {
+                badge.style.background = 'var(--pf-v6-global--primary-color--100)';
+            }
+        }
     }
 
     calculateMigrationDuration(migration) {

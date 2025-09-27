@@ -67,7 +67,10 @@
                             <div class="vm-list-panel">
                                 <div class="collapsible-header" data-target="active-vms">
                                     <div class="collapsible-title">
-                                        <h4 class="pf-v6-c-title pf-m-md">Active VMs</h4>
+                                        <div class="title-with-count">
+                                            <h4 class="pf-v6-c-title pf-m-md">Active VMs</h4>
+                                            <span class="count-badge" id="vm-count-badge">0</span>
+                                        </div>
                                         <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle active VMs">
                                             <i class="fas fa-chevron-down" aria-hidden="true"></i>
                                         </button>
@@ -87,6 +90,9 @@
                                             Hide inactive
                                         </label>
                                     </div>
+                                    <div class="search-controls">
+                                        <input type="text" id="vm-name-filter" class="pf-v6-c-form-control pf-m-small" placeholder="Filter by VM name..." />
+                                    </div>
                                     <div class="vm-list">
                                         <div class="vm-list-rows" id="vm-list-rows">
                                             <!-- VM rows populated by app.js -->
@@ -98,7 +104,10 @@
                             <div class="migration-panel">
                                 <div class="collapsible-header" data-target="active-migrations">
                                     <div class="collapsible-title">
-                                        <h4 class="pf-v6-c-title pf-m-md">Active Migrations</h4>
+                                        <div class="title-with-count">
+                                            <h4 class="pf-v6-c-title pf-m-md">Active Migrations</h4>
+                                            <span class="count-badge" id="migration-count-badge">0</span>
+                                        </div>
                                         <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle active migrations">
                                             <i class="fas fa-chevron-down" aria-hidden="true"></i>
                                         </button>
