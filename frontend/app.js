@@ -61,34 +61,62 @@ class StockholmDatacentersMap {
     forceCorrectStyling() {
         console.log('[DEBUG] Forcing correct styling...');
         
-        // Force map container sizing
+        // Get actual viewport dimensions
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        
+        console.log(`[DEBUG] Viewport: ${viewportWidth}x${viewportHeight}`);
+        
+        // Calculate map dimensions (give it most of the available space)
+        const mapHeight = Math.max(600, viewportHeight - 250);  // At least 600px, leave 250px for header/sidebar
+        const mapWidth = Math.max(800, viewportWidth - 350);   // At least 800px, leave 350px for sidebar
+        
+        console.log(`[DEBUG] Setting map to: ${mapWidth}x${mapHeight}`);
+        
+        // Force map container sizing with absolute pixel values
         const mapContainer = document.querySelector('.map-container');
         const mapElement = document.getElementById('map');
         
         if (mapContainer) {
-            mapContainer.style.setProperty('height', 'calc(100vh - 200px)', 'important');
-            mapContainer.style.setProperty('min-height', '700px', 'important');
+            mapContainer.style.setProperty('height', `${mapHeight}px`, 'important');
+            mapContainer.style.setProperty('width', `${mapWidth}px`, 'important');
+            mapContainer.style.setProperty('max-width', 'none', 'important');
+            mapContainer.style.setProperty('flex', '1 1 auto', 'important');
         }
         
         if (mapElement) {
-            mapElement.style.setProperty('height', 'calc(100vh - 250px)', 'important');
-            mapElement.style.setProperty('min-height', '650px', 'important');
-            mapElement.style.setProperty('width', '100%', 'important');
+            mapElement.style.setProperty('height', `${mapHeight}px`, 'important');
+            mapElement.style.setProperty('width', `${mapWidth}px`, 'important');
+            mapElement.style.setProperty('max-width', 'none', 'important');
             
             // Force map resize
             if (this.map) {
-                this.map.invalidateSize();
+                console.log('[DEBUG] Invalidating map size...');
+                setTimeout(() => {
+                    this.map.invalidateSize();
+                    console.log('[DEBUG] Map size invalidated');
+                }, 100);
             }
+        }
+        
+        // Force the grid layout to accommodate the larger map
+        const openShiftLayout = document.querySelector('.openshift-layout');
+        if (openShiftLayout) {
+            openShiftLayout.style.setProperty('grid-template-columns', '320px 1fr', 'important');
+            openShiftLayout.style.setProperty('gap', '20px', 'important');
         }
         
         // Force remove borders from collapsed panels
         const collapsedContents = document.querySelectorAll('.pf-v6-c-card__body.collapsed');
         collapsedContents.forEach(content => {
+            content.style.setProperty('display', 'none', 'important');
+            content.style.setProperty('visibility', 'hidden', 'important');
+            content.style.setProperty('opacity', '0', 'important');
+            content.style.setProperty('height', '0', 'important');
+            content.style.setProperty('overflow', 'hidden', 'important');
             content.style.setProperty('border', 'none', 'important');
-            content.style.setProperty('border-top', 'none', 'important');
-            content.style.setProperty('border-bottom', 'none', 'important');
-            content.style.setProperty('border-left', 'none', 'important');
-            content.style.setProperty('border-right', 'none', 'important');
+            content.style.setProperty('padding', '0', 'important');
+            content.style.setProperty('margin', '0', 'important');
         });
         
         console.log('[DEBUG] Styling corrections applied');
@@ -151,19 +179,28 @@ class StockholmDatacentersMap {
     }
     
     initMap() {
+        // Get viewport dimensions for initial sizing
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        const mapHeight = Math.max(600, viewportHeight - 250);
+        const mapWidth = Math.max(800, viewportWidth - 350);
+        
+        console.log(`[DEBUG] Initial map sizing: ${mapWidth}x${mapHeight}`);
+        
         // Force map container sizing before initialization
         const mapContainer = document.querySelector('.map-container');
         const mapElement = document.getElementById('map');
         
         if (mapContainer) {
-            mapContainer.style.setProperty('height', 'calc(100vh - 200px)', 'important');
-            mapContainer.style.setProperty('min-height', '700px', 'important');
+            mapContainer.style.setProperty('height', `${mapHeight}px`, 'important');
+            mapContainer.style.setProperty('width', `${mapWidth}px`, 'important');
+            mapContainer.style.setProperty('max-width', 'none', 'important');
         }
         
         if (mapElement) {
-            mapElement.style.setProperty('height', 'calc(100vh - 250px)', 'important');
-            mapElement.style.setProperty('min-height', '650px', 'important');
-            mapElement.style.setProperty('width', '100%', 'important');
+            mapElement.style.setProperty('height', `${mapHeight}px`, 'important');
+            mapElement.style.setProperty('width', `${mapWidth}px`, 'important');
+            mapElement.style.setProperty('max-width', 'none', 'important');
         }
         
         // Initialize map centered on Stockholm
@@ -2565,7 +2602,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.addEventListener('resize', () => {
             if (resizeTimer) clearTimeout(resizeTimer);
             // wait until resize stops (200ms) before recalculating map overlays
-            resizeTimer = setTimeout(onResizeDone, 200);
+            resizeTimer = setTimeout(() => {
+                onResizeDone();
+                // Also force correct styling on resize
+                if (window.app && window.app.forceCorrectStyling) {
+                    window.app.forceCorrectStyling();
+                }
+            }, 200);
         });
     })();
 });
