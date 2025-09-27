@@ -117,10 +117,9 @@ test.describe('VM management and filtering', () => {
       // Map should still be visible after centering
       await expect(page.locator('#map')).toBeVisible();
       
-      // Stats should update (this verifies the action did something)
+      // VM list should be functioning (verify by checking for VM rows)
       await page.waitForTimeout(500);
-      const totalVmsText = await page.textContent('#total-vms');
-      expect(totalVmsText).toMatch(/^\d+$/);
+      await expect(page.locator('.vm-list-rows')).toBeVisible();
     }
   });
 });

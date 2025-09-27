@@ -2090,8 +2090,11 @@ class StockholmDatacentersMap {
         
         console.log('Total VMs calculated:', totalVMs, 'Active datacenters:', activeDatacenters);
         
-        document.getElementById('total-vms').textContent = totalVMs;
-        document.getElementById('active-datacenters').textContent = activeDatacenters;
+        // Update stats display if elements exist (stats overlay was removed)
+        const totalVMsElement = document.getElementById('total-vms');
+        const activeDatacentersElement = document.getElementById('active-datacenters');
+        if (totalVMsElement) totalVMsElement.textContent = totalVMs;
+        if (activeDatacentersElement) activeDatacentersElement.textContent = activeDatacenters;
 
         // refresh global VM list since counts may have changed
         this.renderGlobalVMList();

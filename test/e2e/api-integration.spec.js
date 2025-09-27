@@ -13,7 +13,8 @@ test.describe('API integration and error handling', () => {
     
     // Basic UI elements should be present
     await expect(page.locator('.datacenter-panel')).toBeVisible();
-    await expect(page.locator('#stats-panel')).toBeVisible();
+    // Stats overlay was removed, so check map instead
+    await expect(page.locator('#map')).toBeVisible();
   });
 
   test('handles API timeouts gracefully', async ({ page }) => {
@@ -31,7 +32,7 @@ test.describe('API integration and error handling', () => {
     await expect(page.locator('#map')).toBeVisible();
     
     // UI should remain functional
-    await expect(page.locator('#total-vms')).toBeVisible();
+    await expect(page.locator('#map')).toBeVisible();
   });
 
   test('displays appropriate loading states', async ({ page }) => {
@@ -54,7 +55,7 @@ test.describe('API integration and error handling', () => {
     
     // App should be fully loaded
     await expect(page.locator('#map')).toBeVisible();
-    await expect(page.locator('#total-vms')).toBeVisible();
+    await expect(page.locator('.datacenter-panel')).toBeVisible();
   });
 
   test('handles malformed API responses', async ({ page }) => {
