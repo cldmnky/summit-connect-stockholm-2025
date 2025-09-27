@@ -1312,6 +1312,23 @@ input:focus {
     line-height: 1.3; /* Tighter line height */
 }
 
+/* Back button styling */
+.datacenter-back-btn {
+    margin-bottom: 12px;
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--pf-v6-global--link--Color);
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.datacenter-back-btn:hover {
+    color: var(--pf-v6-global--link--Color--hover);
+    text-decoration: underline;
+}
+
 .clusters-section {
     margin-top: 8px;
 }

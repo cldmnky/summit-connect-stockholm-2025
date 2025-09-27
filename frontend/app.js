@@ -445,6 +445,18 @@ class StockholmDatacentersMap {
             </div>
         `;
 
+        // Add back button for detailed view
+        if (isSelected) {
+            const backButton = document.createElement('button');
+            backButton.className = 'pf-v6-c-button pf-m-link pf-m-small datacenter-back-btn';
+            backButton.innerHTML = '← Back to Overview';
+            backButton.onclick = () => {
+                this.renderDatacenterView(); // Go back to overview
+                this.currentPopupDcId = null; // Clear selected datacenter
+            };
+            card.insertBefore(backButton, card.firstChild);
+        }
+
         if (isSelected && clusters.length > 0) {
             const clustersSection = document.createElement('div');
             clustersSection.className = 'clusters-section';

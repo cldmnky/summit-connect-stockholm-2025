@@ -122,4 +122,40 @@ test.describe('Datacenter overview and interactions', () => {
     const toastDisplay = await toast.evaluate(el => window.getComputedStyle(el).display);
     expect(['none', 'block']).toContain(toastDisplay);
   });
+
+  test('back to overview button works in detailed datacenter view', async ({ page }) => {
+    await page.goto(BASE_URL);
+    
+    // Wait for the page to load
+    await page.waitForSelector('.datacenter-panel');
+    
+    // Find and click on a datacenter header (this should show the detailed view)
+    const datacenterHeaders = page.locator('.datacenter-header');
+    const headerCount = await datacenterHeaders.count();
+    expect(headerCount).toBeGreaterThan(0);
+    
+    // Click the first datacenter header
+    await datacenterHeaders.first().click();
+    
+    // Wait for the detailed view to load and check for back button
+    await page.waitForTimeout(1000); // Give more time for the view to update
+    
+    // Look for the back button
+    const backButton = page.locator('.datacenter-back-btn');
+    await expect(backButton).toBeVisible();
+    await expect(backButton).toHaveText('← Back to Overview');
+    
+    // Click the back button
+    await backButton.click();
+    
+    // Wait for the overview to load back
+    await page.waitForTimeout(1000);
+    
+    // Verify we're back to overview (back button should not be visible)
+    await expect(backButton).not.toBeVisible();
+    
+    // Should see multiple datacenter headers again (back to overview)
+    const finalHeaderCount = await datacenterHeaders.count();
+    expect(finalHeaderCount).toBeGreaterThan(1);
+  });
 });
