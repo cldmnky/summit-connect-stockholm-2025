@@ -48,8 +48,50 @@ class StockholmDatacentersMap {
             this.createAllForceGraphs();
         }, 1000);
         
+        // Force style corrections after everything is loaded
+        setTimeout(() => {
+            this.forceCorrectStyling();
+        }, 1500);
+        
         // periodically refetch data to pick up migrations
         this.startAutoRefresh(5000); // every 5s
+    }
+    
+    // Force correct styling with JavaScript
+    forceCorrectStyling() {
+        console.log('[DEBUG] Forcing correct styling...');
+        
+        // Force map container sizing
+        const mapContainer = document.querySelector('.map-container');
+        const mapElement = document.getElementById('map');
+        
+        if (mapContainer) {
+            mapContainer.style.setProperty('height', 'calc(100vh - 200px)', 'important');
+            mapContainer.style.setProperty('min-height', '700px', 'important');
+        }
+        
+        if (mapElement) {
+            mapElement.style.setProperty('height', 'calc(100vh - 250px)', 'important');
+            mapElement.style.setProperty('min-height', '650px', 'important');
+            mapElement.style.setProperty('width', '100%', 'important');
+            
+            // Force map resize
+            if (this.map) {
+                this.map.invalidateSize();
+            }
+        }
+        
+        // Force remove borders from collapsed panels
+        const collapsedContents = document.querySelectorAll('.pf-v6-c-card__body.collapsed');
+        collapsedContents.forEach(content => {
+            content.style.setProperty('border', 'none', 'important');
+            content.style.setProperty('border-top', 'none', 'important');
+            content.style.setProperty('border-bottom', 'none', 'important');
+            content.style.setProperty('border-left', 'none', 'important');
+            content.style.setProperty('border-right', 'none', 'important');
+        });
+        
+        console.log('[DEBUG] Styling corrections applied');
     }
     
     async loadDatacenters() {
@@ -109,6 +151,21 @@ class StockholmDatacentersMap {
     }
     
     initMap() {
+        // Force map container sizing before initialization
+        const mapContainer = document.querySelector('.map-container');
+        const mapElement = document.getElementById('map');
+        
+        if (mapContainer) {
+            mapContainer.style.setProperty('height', 'calc(100vh - 200px)', 'important');
+            mapContainer.style.setProperty('min-height', '700px', 'important');
+        }
+        
+        if (mapElement) {
+            mapElement.style.setProperty('height', 'calc(100vh - 250px)', 'important');
+            mapElement.style.setProperty('min-height', '650px', 'important');
+            mapElement.style.setProperty('width', '100%', 'important');
+        }
+        
         // Initialize map centered on Stockholm
         this.map = L.map('map').setView([59.3293, 18.0686], 11);
         
@@ -2424,6 +2481,12 @@ class StockholmDatacentersMap {
             if (isCollapsed) {
                 header.classList.add('collapsed');
                 content.classList.add('collapsed');
+                // Force remove borders for collapsed panels
+                content.style.setProperty('border', 'none', 'important');
+                content.style.setProperty('border-top', 'none', 'important');
+                content.style.setProperty('border-bottom', 'none', 'important');
+                content.style.setProperty('border-left', 'none', 'important');
+                content.style.setProperty('border-right', 'none', 'important');
             }
             
             // Add click handler
@@ -2438,11 +2501,23 @@ class StockholmDatacentersMap {
                     header.classList.remove('collapsed');
                     content.classList.remove('collapsed');
                     savedStates[target] = false;
+                    // Restore borders when expanded
+                    content.style.removeProperty('border');
+                    content.style.removeProperty('border-top');
+                    content.style.removeProperty('border-bottom');
+                    content.style.removeProperty('border-left');
+                    content.style.removeProperty('border-right');
                 } else {
                     // Collapse
                     header.classList.add('collapsed');
                     content.classList.add('collapsed');
                     savedStates[target] = true;
+                    // Force remove borders for collapsed panels
+                    content.style.setProperty('border', 'none', 'important');
+                    content.style.setProperty('border-top', 'none', 'important');
+                    content.style.setProperty('border-bottom', 'none', 'important');
+                    content.style.setProperty('border-left', 'none', 'important');
+                    content.style.setProperty('border-right', 'none', 'important');
                 }
                 
                 // Save state to localStorage

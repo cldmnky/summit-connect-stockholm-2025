@@ -1,3 +1,4 @@
+/* FORCE REFRESH - Cache busting comment v3.0 - JavaScript style forcing implemented */
 * {
     margin: 0;
     padding: 0;
@@ -36,20 +37,28 @@ body {
 }
 
 main.pf-v6-c-page__main-section {
-    flex: 1;
-    min-height: 0;
+    flex: 1 !important;
+    min-height: calc(100vh - 120px) !important;
+    height: calc(100vh - 120px) !important;
     padding: 24px;
 }
 
-/* OpenShift-style layout grid */
+/* OpenShift-style layout grid - FORCE FULL HEIGHT */
 .openshift-layout {
-    height: 100%;
+    height: calc(100vh - 160px) !important;
+    min-height: 600px !important;
     gap: var(--pf-v6-global--spacer--lg, 24px);
 }
 
 .openshift-layout .pf-v6-l-grid__item {
     display: flex;
     flex-direction: column;
+}
+
+/* FORCE map column to take more space */
+.openshift-layout .pf-v6-l-grid__item.pf-m-8-col-on-lg {
+    height: calc(100vh - 160px) !important;
+    min-height: 600px !important;
 }
 
 /* Header/Banner styling to match OpenShift */
@@ -115,11 +124,11 @@ header .pf-v6-c-content {
     padding: var(--pf-v6-global--spacer--lg, 24px);
 }
 
-/* Map container styling */
-.map-container {
-    flex: 1;
-    min-height: 600px;
-    height: 100%;
+/* Map container styling - FORCE LARGER SIZE */
+.pf-v6-c-card.map-container {
+    flex: 1 !important;
+    min-height: 700px !important;
+    height: calc(100vh - 200px) !important;
     display: flex;
     flex-direction: column;
 }
@@ -129,10 +138,11 @@ header .pf-v6-c-content {
 }
 
 .map-container .pf-v6-c-card__body {
-    flex: 1;
+    flex: 1 !important;
     position: relative;
     padding: 0;
-    min-height: 550px;
+    min-height: 650px !important;
+    height: calc(100vh - 250px) !important;
 }
 
 /* Sidebar panels container */
@@ -286,13 +296,38 @@ header .pf-v6-c-content {
     background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
 }
 
-/* Hide borders when panel is collapsed */
+/* FORCE hide collapsed content completely */
+.pf-v6-c-card.panel-card .collapsible-content[hidden],
+.pf-v6-c-card.panel-card .collapsible-content.collapsed,
+.collapsible-content[hidden],
+.collapsible-content.collapsed {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: none !important;
+}
+
+/* FORCE hide all child elements in collapsed panels */
+.collapsible-content[hidden] *,
+.collapsible-content.collapsed * {
+    display: none !important;
+    visibility: hidden !important;
+    border: none !important;
+    background: none !important;
+}
+
 .collapsible-content[hidden] .vm-list,
 .collapsible-content[hidden] .migration-list,
 .collapsible-content.collapsed .vm-list,
 .collapsible-content.collapsed .migration-list {
-    border: none;
-    background: transparent;
+    border: none !important;
+    background: transparent !important;
+    display: none !important;
 }
 
 .migration-list:empty::before {
@@ -545,11 +580,11 @@ header .pf-v6-c-content {
     position: relative;
 }
 
-/* Leaflet map styling within OpenShift cards */
+/* Leaflet map styling within OpenShift cards - FORCE SIZE */
 #map {
-    width: 100%;
-    height: 100%;
-    min-height: 550px;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 650px !important;
     border-radius: 0;
     border: none;
     background: var(--pf-v6-global--BackgroundColor--light-300, #ededed);
