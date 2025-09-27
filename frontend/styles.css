@@ -14,18 +14,26 @@ body {
 }
 
 /* Page layout adjustments for PatternFly */
+.pf-v6-c-page {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
 .pf-v6-c-page__main-section {
     padding: var(--pf-t--global--spacer--md, 16px);
 }
 
 .pf-v6-c-page__main-section.pf-m-fill {
     flex: 1;
-    min-height: calc(100vh - 200px);
+    display: flex;
+    flex-direction: column;
 }
 
 /* Ensure full height for main content */
 main.pf-v6-c-page__main-section {
-    height: calc(100vh - 160px);
+    flex: 1;
+    min-height: 0; /* Allow flex shrinking */
 }
 
 /* Header styles */
@@ -53,12 +61,16 @@ main {
 
 /* Grid adjustments for PatternFly */
 .pf-v6-l-grid.pf-m-gutter {
+    display: flex;
+    flex-direction: column;
     height: 100%;
+    min-height: 600px; /* Ensure minimum height */
     margin: 0;
 }
 
 .pf-v6-l-grid__item {
-    height: 100%;
+    flex: 1;
+    min-height: 300px; /* Ensure items have some height */
 }
 
 /* Map container styles */
@@ -68,13 +80,14 @@ main {
     padding: 0;
     position: relative;
     overflow: hidden;
-    max-height: calc(100vh - 160px);
-    height: calc(100vh - 200px);
+    height: 100%;
+    min-height: 600px; /* Ensure visible height */
 }
 
 .map-container.pf-v6-c-card .pf-v6-c-card__body {
     padding: 0;
     height: 100%;
+    min-height: 600px;
     position: relative;
 }
 
@@ -866,17 +879,21 @@ main {
         gap: var(--pf-t--global--spacer--xl, 24px);
         align-items: stretch;
         width: 100%;
+        height: 100%;
+        min-height: 600px;
     }
 
     /* Make the main content column expand to fill available space */
     .pf-v6-l-grid__item.pf-m-9-col-on-lg {
         flex: 1 1 auto; /* make left column very flexible */
         min-width: 0; /* allow children to shrink properly */
+        height: 100%;
     }
 
     /* Keep the right panel a fixed-ish column */
     .pf-v6-l-grid__item.pf-m-3-col-on-lg {
         flex: 0 0 360px; /* slightly wider panel on large screens */
+        height: 100%;
     }
 
     .map-container {
@@ -1362,6 +1379,11 @@ main {
 @media (max-width: 1024px) {
     .pf-v6-l-grid.pf-m-gutter {
         flex-direction: column;
+    }
+    
+    .pf-v6-l-grid__item {
+        flex: none;
+        min-height: 400px;
     }
     
     .datacenter-panel {
