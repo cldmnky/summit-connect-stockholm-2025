@@ -2463,10 +2463,13 @@ class StockholmDatacentersMap {
             if (isCollapsed) {
                 header.classList.add('collapsed');
                 content.classList.add('collapsed');
-                // Apply collapsed styling
+                // Apply collapsed styling - completely hide
                 content.style.setProperty('border', 'none', 'important');
                 content.style.setProperty('padding', '0', 'important');
                 content.style.setProperty('margin', '0', 'important');
+                content.style.setProperty('opacity', '0', 'important');
+                content.style.setProperty('visibility', 'hidden', 'important');
+                content.style.setProperty('box-shadow', 'none', 'important');
             }
             
             // Add click handler
@@ -2495,16 +2498,22 @@ class StockholmDatacentersMap {
                     content.style.removeProperty('margin');
                     content.style.removeProperty('max-height');
                     content.style.removeProperty('overflow');
+                    content.style.removeProperty('opacity');
+                    content.style.removeProperty('visibility');
+                    content.style.removeProperty('box-shadow');
                 } else {
                     // Collapse
                     console.log(`[DEBUG] Collapsing panel ${target}`);
                     header.classList.add('collapsed');
                     content.classList.add('collapsed');
                     savedStates[target] = true;
-                    // Apply collapsed styling
+                    // Apply collapsed styling - completely hide
                     content.style.setProperty('border', 'none', 'important');
                     content.style.setProperty('padding', '0', 'important');
                     content.style.setProperty('margin', '0', 'important');
+                    content.style.setProperty('opacity', '0', 'important');
+                    content.style.setProperty('visibility', 'hidden', 'important');
+                    content.style.setProperty('box-shadow', 'none', 'important');
                 }
                 
                 // Save state to localStorage

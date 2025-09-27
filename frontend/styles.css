@@ -1,4 +1,4 @@
-/* FORCE REFRESH - Cache busting comment v6.0 - Fixed grid layout with proper positioning */
+/* FORCE REFRESH - Cache busting comment v7.0 - Fixed sidebar spacing and collapsed panel visibility */
 * {
     margin: 0;
     padding: 0;
@@ -148,6 +148,16 @@ header .pf-v6-c-content {
     padding: var(--pf-v6-global--spacer--lg, 24px);
 }
 
+/* Sidebar panel specific body padding */
+.panel-card .pf-v6-c-card__body {
+    padding: var(--pf-v6-global--spacer--md, 16px) var(--pf-v6-global--spacer--lg, 24px);
+}
+
+/* Ensure proper spacing in filter sections */
+.filter-section {
+    margin-bottom: var(--pf-v6-global--spacer--md, 16px);
+}
+
 /* Map container styling - FORCE LARGER SIZE */
 .pf-v6-c-card.map-container {
     flex: 1 !important;
@@ -180,9 +190,6 @@ header .pf-v6-c-content {
     min-height: 500px !important;
     z-index: 1 !important;
 }
-    min-height: 650px !important;
-    height: calc(100vh - 250px) !important;
-}
 
 /* Sidebar panels container */
 .sidebar-panels {
@@ -195,6 +202,8 @@ header .pf-v6-c-content {
 .panel-card {
     display: flex;
     flex-direction: column;
+    margin-bottom: var(--pf-v6-global--spacer--md, 16px);
+    box-shadow: 0 1px 4px rgba(3, 3, 3, 0.12), 0 0 8px rgba(3, 3, 3, 0.06);
 }
 
 .panel-card:not(:last-child) {
@@ -204,6 +213,7 @@ header .pf-v6-c-content {
 .panel-card:last-child {
     flex: 1;
     min-height: 0;
+    margin-bottom: 0; /* Remove bottom margin from last card */
 }
 
 /* OpenShift-style form elements */
@@ -335,7 +345,7 @@ header .pf-v6-c-content {
     background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
 }
 
-/* FORCE hide collapsed content completely */
+/* COMPLETELY hide collapsed content */
 .pf-v6-c-card.panel-card .collapsible-content[hidden],
 .pf-v6-c-card.panel-card .collapsible-content.collapsed,
 .collapsible-content[hidden],
@@ -345,15 +355,29 @@ header .pf-v6-c-content {
     padding: 0 !important;
     margin: 0 !important;
     border: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    border-right: none !important;
     background: none !important;
+    box-shadow: none !important;
     transition: max-height 0.3s ease-out, padding 0.3s ease-out !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
 }
 
-/* Remove display:none from child elements - let them exist but be hidden by max-height */
+/* Ensure all child elements are completely hidden in collapsed panels */
 .collapsible-content[hidden] *,
 .collapsible-content.collapsed * {
     border: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    border-right: none !important;
     background: none !important;
+    box-shadow: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
 }
 
 .collapsible-content[hidden] .vm-list,
@@ -2134,7 +2158,7 @@ input:focus {
 }
 
 .collapsible-content {
-    transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+    transition: max-height 0.3s ease-out, padding 0.3s ease-out, opacity 0.3s ease-out, visibility 0.3s ease-out;
     max-height: none !important; /* Allow natural height by default */
     overflow: visible !important; /* Default to visible overflow */
 }
@@ -2143,8 +2167,21 @@ input:focus {
     max-height: none !important;
     overflow: visible !important;
     padding: inherit !important;
+    margin: inherit !important;
     border: inherit !important;
     background: inherit !important;
+    box-shadow: inherit !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Ensure expanded child elements are fully visible */
+.collapsible-content:not(.collapsed) * {
+    opacity: 1 !important;
+    visibility: visible !important;
+    border: inherit !important;
+    background: inherit !important;
+    box-shadow: inherit !important;
 }
 
 .collapsible-content.collapsed {
