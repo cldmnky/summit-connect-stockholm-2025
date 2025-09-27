@@ -106,17 +106,17 @@ class StockholmDatacentersMap {
             openShiftLayout.style.setProperty('gap', '20px', 'important');
         }
         
-        // Force remove borders from collapsed panels
+        // Force remove borders from collapsed panels (but don't hide them completely)
         const collapsedContents = document.querySelectorAll('.pf-v6-c-card__body.collapsed');
         collapsedContents.forEach(content => {
-            content.style.setProperty('display', 'none', 'important');
-            content.style.setProperty('visibility', 'hidden', 'important');
-            content.style.setProperty('opacity', '0', 'important');
-            content.style.setProperty('height', '0', 'important');
-            content.style.setProperty('overflow', 'hidden', 'important');
             content.style.setProperty('border', 'none', 'important');
+            content.style.setProperty('border-top', 'none', 'important');
+            content.style.setProperty('border-bottom', 'none', 'important');
+            content.style.setProperty('border-left', 'none', 'important');
+            content.style.setProperty('border-right', 'none', 'important');
             content.style.setProperty('padding', '0', 'important');
             content.style.setProperty('margin', '0', 'important');
+            // Don't use display:none as it breaks collapsible functionality
         });
         
         console.log('[DEBUG] Styling corrections applied');
@@ -2518,12 +2518,10 @@ class StockholmDatacentersMap {
             if (isCollapsed) {
                 header.classList.add('collapsed');
                 content.classList.add('collapsed');
-                // Force remove borders for collapsed panels
+                // Apply collapsed styling
                 content.style.setProperty('border', 'none', 'important');
-                content.style.setProperty('border-top', 'none', 'important');
-                content.style.setProperty('border-bottom', 'none', 'important');
-                content.style.setProperty('border-left', 'none', 'important');
-                content.style.setProperty('border-right', 'none', 'important');
+                content.style.setProperty('padding', '0', 'important');
+                content.style.setProperty('margin', '0', 'important');
             }
             
             // Add click handler
@@ -2538,23 +2536,25 @@ class StockholmDatacentersMap {
                     header.classList.remove('collapsed');
                     content.classList.remove('collapsed');
                     savedStates[target] = false;
-                    // Restore borders when expanded
+                    // Restore content properties when expanded
                     content.style.removeProperty('border');
                     content.style.removeProperty('border-top');
                     content.style.removeProperty('border-bottom');
                     content.style.removeProperty('border-left');
                     content.style.removeProperty('border-right');
+                    content.style.removeProperty('padding');
+                    content.style.removeProperty('margin');
+                    content.style.removeProperty('max-height');
+                    content.style.removeProperty('overflow');
                 } else {
                     // Collapse
                     header.classList.add('collapsed');
                     content.classList.add('collapsed');
                     savedStates[target] = true;
-                    // Force remove borders for collapsed panels
+                    // Apply collapsed styling
                     content.style.setProperty('border', 'none', 'important');
-                    content.style.setProperty('border-top', 'none', 'important');
-                    content.style.setProperty('border-bottom', 'none', 'important');
-                    content.style.setProperty('border-left', 'none', 'important');
-                    content.style.setProperty('border-right', 'none', 'important');
+                    content.style.setProperty('padding', '0', 'important');
+                    content.style.setProperty('margin', '0', 'important');
                 }
                 
                 // Save state to localStorage

@@ -1,4 +1,4 @@
-/* FORCE REFRESH - Cache busting comment v4.0 - Viewport-based pixel sizing implemented */
+/* FORCE REFRESH - Cache busting comment v5.0 - Fixed collapsible functionality with max-height approach */
 * {
     margin: 0;
     padding: 0;
@@ -301,22 +301,18 @@ header .pf-v6-c-content {
 .pf-v6-c-card.panel-card .collapsible-content.collapsed,
 .collapsible-content[hidden],
 .collapsible-content.collapsed {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    height: 0 !important;
-    min-height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
     padding: 0 !important;
     margin: 0 !important;
     border: none !important;
     background: none !important;
+    transition: max-height 0.3s ease-out, padding 0.3s ease-out !important;
 }
 
-/* FORCE hide all child elements in collapsed panels */
+/* Remove display:none from child elements - let them exist but be hidden by max-height */
 .collapsible-content[hidden] *,
 .collapsible-content.collapsed * {
-    display: none !important;
-    visibility: hidden !important;
     border: none !important;
     background: none !important;
 }
@@ -327,7 +323,6 @@ header .pf-v6-c-content {
 .collapsible-content.collapsed .migration-list {
     border: none !important;
     background: transparent !important;
-    display: none !important;
 }
 
 .migration-list:empty::before {
@@ -2100,10 +2095,17 @@ input:focus {
 }
 
 .collapsible-content {
-    transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
-    max-height: none; /* Allow natural height by default */
-    opacity: 1;
-    overflow: visible; /* Default to visible overflow */
+    transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+    max-height: none !important; /* Allow natural height by default */
+    overflow: visible !important; /* Default to visible overflow */
+}
+
+.collapsible-content:not(.collapsed) {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: inherit !important;
+    border: inherit !important;
+    background: inherit !important;
 }
 
 .collapsible-content.collapsed {
