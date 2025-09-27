@@ -1,4 +1,4 @@
-/* FORCE REFRESH - Cache busting comment v8.0 - Restored expanded content styling */
+/* FORCE REFRESH - Cache busting comment v9.0 - Reduced borders and improved spacing */
 * {
     margin: 0;
     padding: 0;
@@ -148,14 +148,20 @@ header .pf-v6-c-content {
     padding: var(--pf-v6-global--spacer--lg, 24px);
 }
 
-/* Sidebar panel specific body padding */
+/* Sidebar panel specific body padding - improved spacing */
 .panel-card .pf-v6-c-card__body {
-    padding: var(--pf-v6-global--spacer--md, 16px) var(--pf-v6-global--spacer--lg, 24px);
+    padding: var(--pf-v6-global--spacer--lg, 24px);
 }
 
 /* Ensure proper spacing in filter sections */
 .filter-section {
-    margin-bottom: var(--pf-v6-global--spacer--md, 16px);
+    margin-bottom: var(--pf-v6-global--spacer--lg, 24px);
+    padding: 0 !important; /* Remove extra padding from filter sections */
+}
+
+/* Content sections need proper spacing */
+.content-section {
+    margin-top: var(--pf-v6-global--spacer--md, 16px);
 }
 
 /* Map container styling - FORCE LARGER SIZE */
@@ -202,7 +208,7 @@ header .pf-v6-c-content {
 .panel-card {
     display: flex;
     flex-direction: column;
-    margin-bottom: var(--pf-v6-global--spacer--md, 16px);
+    margin-bottom: var(--pf-v6-global--spacer--lg, 24px);
     box-shadow: 0 1px 4px rgba(3, 3, 3, 0.12), 0 0 8px rgba(3, 3, 3, 0.06);
 }
 
@@ -214,6 +220,13 @@ header .pf-v6-c-content {
     flex: 1;
     min-height: 0;
     margin-bottom: 0; /* Remove bottom margin from last card */
+}
+
+/* Improve panel header spacing */
+.panel-card .pf-v6-c-card__header {
+    padding: var(--pf-v6-global--spacer--lg, 24px);
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+    background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
 }
 
 /* OpenShift-style form elements */
@@ -2166,7 +2179,7 @@ input:focus {
 .collapsible-content:not(.collapsed) {
     max-height: none !important;
     overflow: visible !important;
-    padding: var(--pf-v6-global--spacer--md, 16px) var(--pf-v6-global--spacer--lg, 24px) !important;
+    padding: var(--pf-v6-global--spacer--lg, 24px) !important;
     margin: inherit !important;
     border: inherit !important;
     background: inherit !important;
@@ -2176,16 +2189,42 @@ input:focus {
 }
 
 /* Ensure proper styling for datacenter and VM items in expanded panels */
-.collapsible-content:not(.collapsed) .datacenter-card,
-.collapsible-content:not(.collapsed) .vm-row,
-.collapsible-content:not(.collapsed) .vm-item,
-.collapsible-content:not(.collapsed) .migration-item {
+.collapsible-content:not(.collapsed) .datacenter-card {
     background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
     border: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2) !important;
     border-radius: var(--pf-v6-global--BorderRadius--sm, 4px) !important;
     padding: var(--pf-v6-global--spacer--md, 16px) !important;
     margin-bottom: var(--pf-v6-global--spacer--sm, 8px) !important;
     box-shadow: 0 1px 2px rgba(3, 3, 3, 0.06) !important;
+}
+
+/* VM items - remove excessive borders, use subtle styling */
+.collapsible-content:not(.collapsed) .vm-row,
+.collapsible-content:not(.collapsed) .vm-item {
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    border: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2) !important;
+    border-radius: var(--pf-v6-global--BorderRadius--sm, 4px) !important;
+    padding: var(--pf-v6-global--spacer--sm, 8px) var(--pf-v6-global--spacer--md, 16px) !important;
+    margin-bottom: var(--pf-v6-global--spacer--xs, 4px) !important;
+    /* Remove heavy box-shadow for cleaner look */
+}
+
+/* Cluster containers - minimal styling to avoid border overload */
+.collapsible-content:not(.collapsed) .cluster-container,
+.collapsible-content:not(.collapsed) .cluster-vms {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: var(--pf-v6-global--spacer--xs, 4px) 0 !important;
+}
+
+/* Migration items - subtle styling */
+.collapsible-content:not(.collapsed) .migration-item {
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    border-left: 3px solid var(--pf-v6-global--warning-color--100, #f0ab00) !important;
+    border-radius: var(--pf-v6-global--BorderRadius--sm, 4px) !important;
+    padding: var(--pf-v6-global--spacer--sm, 8px) var(--pf-v6-global--spacer--md, 16px) !important;
+    margin-bottom: var(--pf-v6-global--spacer--xs, 4px) !important;
 }
 
 /* Datacenter status badges and other badges */
@@ -2199,9 +2238,12 @@ input:focus {
     font-weight: 500 !important;
 }
 
-/* VM list and rows */
+/* VM list and rows - subtle left accent only */
 .collapsible-content:not(.collapsed) .vm-list-rows .vm-row {
-    border-left: 4px solid var(--pf-v6-global--info-color--100, #0066cc) !important;
+    border-left: 3px solid var(--pf-v6-global--info-color--100, #0066cc) !important;
+    border-top: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
 }
 
 /* Form controls in expanded panels */
