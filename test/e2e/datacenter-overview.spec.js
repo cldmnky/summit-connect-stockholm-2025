@@ -14,8 +14,8 @@ test.describe('Datacenter overview and interactions', () => {
     // Should have datacenter overview section
     await expect(page.locator('#datacenter-view')).toBeVisible();
     
-    // Should have title
-    const panelTitle = page.locator('.datacenter-panel .title.is-5');
+    // Should have title - use specific role-based selector for the main heading
+    const panelTitle = page.getByRole('heading', { name: 'Datacenter Overview' });
     await expect(panelTitle).toBeVisible();
     await expect(panelTitle).toHaveText('Datacenter Overview');
   });
@@ -69,11 +69,11 @@ test.describe('Datacenter overview and interactions', () => {
     
     // Test desktop size (default)
     await page.setViewportSize({ width: 1200, height: 800 });
-    await page.waitForSelector('.columns', { timeout: 5000 });
+    await page.waitForSelector('.pf-v6-l-grid', { timeout: 5000 });
     
-    // Both columns should be visible on desktop
-    await expect(page.locator('.column.is-9')).toBeVisible(); // Map column
-    await expect(page.locator('.column.is-3')).toBeVisible(); // Sidebar column
+    // Both columns should be visible on desktop - updated for PatternFly
+    await expect(page.locator('.pf-v6-l-grid__item.pf-m-9-col-on-lg')).toBeVisible(); // Map column
+    await expect(page.locator('.pf-v6-l-grid__item.pf-m-3-col-on-lg')).toBeVisible(); // Sidebar column
     
     // Test tablet size
     await page.setViewportSize({ width: 768, height: 600 });
