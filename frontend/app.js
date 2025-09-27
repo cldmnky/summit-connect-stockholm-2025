@@ -2488,12 +2488,8 @@ class StockholmDatacentersMap {
                     header.classList.remove('collapsed');
                     content.classList.remove('collapsed');
                     savedStates[target] = false;
-                    // Restore content properties when expanded
+                    // Restore content properties when expanded - remove only the forced collapsed styles
                     content.style.removeProperty('border');
-                    content.style.removeProperty('border-top');
-                    content.style.removeProperty('border-bottom');
-                    content.style.removeProperty('border-left');
-                    content.style.removeProperty('border-right');
                     content.style.removeProperty('padding');
                     content.style.removeProperty('margin');
                     content.style.removeProperty('max-height');
@@ -2501,6 +2497,7 @@ class StockholmDatacentersMap {
                     content.style.removeProperty('opacity');
                     content.style.removeProperty('visibility');
                     content.style.removeProperty('box-shadow');
+                    content.style.removeProperty('background');
                 } else {
                     // Collapse
                     console.log(`[DEBUG] Collapsing panel ${target}`);
