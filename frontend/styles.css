@@ -623,22 +623,37 @@ header .pf-v6-c-content {
 
 /* Custom marker styling for consistency */
 .datacenter-marker {
-    background-color: var(--pf-v6-global--primary-color--100, #0066cc);
-    border: 3px solid var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
-    border-radius: 50%;
+    /* divIcon outer container should be transparent and size-auto so it doesn't form an ellipse */
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    transition: none !important;
+}
+
+/* The visible circular pin lives inside the container as .datacenter-point */
+.datacenter-marker .datacenter-point {
     width: 20px;
     height: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    cursor: pointer;
-    transition: all 0.2s ease;
+    background-color: #ff6b6b; /* red pin */
+    border: 3px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    position: absolute;
+    left: 0;
+    top: 0;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-.datacenter-marker:hover {
-    background-color: var(--pf-v6-global--primary-color--200, #004d99);
-    transform: scale(1.1);
+.datacenter-marker:hover .datacenter-point {
+    transform: scale(1.15);
+    background-color: #ff4f4f;
 }
 
-.datacenter-marker.selected {
+.datacenter-marker.selected .datacenter-point {
     background-color: var(--pf-v6-global--warning-color--100, #f0ab00);
     border-color: var(--pf-v6-global--warning-color--200, #c58c00);
 }
