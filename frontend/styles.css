@@ -45,12 +45,36 @@ main.pf-v6-c-page__main-section {
 
 /* OpenShift-style layout grid - FORCE FULL HEIGHT */
 .openshift-layout {
-    display: grid !important;
-    grid-template-columns: 1fr 320px !important;
-    height: calc(100vh - 160px) !important;
+    position: relative !important;
+    height: calc(100vh - 120px) !important; /* Adjusted to account for minimal visible header */
     min-height: 600px !important;
-    gap: var(--pf-v6-global--spacer--lg, 24px) !important;
     overflow: hidden !important;
+}
+
+/* Map takes full viewport */
+.openshift-layout .pf-v6-l-grid__item:first-child {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1 !important;
+}
+
+/* Sidebar overlays on top right */
+.openshift-layout .pf-v6-l-grid__item:last-child {
+    position: absolute !important;
+    top: var(--pf-v6-global--spacer--md, 16px) !important;
+    right: var(--pf-v6-global--spacer--md, 16px) !important;
+    width: 320px !important;
+    max-height: calc(100% - 32px) !important;
+    z-index: 1000 !important;
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    border-radius: var(--pf-v6-global--BorderRadius--lg, 8px) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+    overflow-y: auto !important;
 }
 
 .openshift-layout .pf-v6-l-grid__item {
@@ -59,31 +83,42 @@ main.pf-v6-c-page__main-section {
     min-width: 0 !important; /* Prevent flex items from overflowing */
 }
 
-/* FORCE map column to respect grid layout */
+/* Main content area - force width regardless of breakpoints */
 .openshift-layout .pf-v6-l-grid__item.pf-m-8-col-on-lg {
     min-height: 600px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--pf-v6-global--spacer--md, 16px) !important;
+    flex: 1 !important; /* Take remaining space */
+    width: auto !important;
     max-width: none !important;
-    width: auto !important; /* Override JavaScript forced width */
-    grid-column: 1 !important;
+    order: 1 !important;
 }
 
-/* Header/Banner styling to match OpenShift */
+/* Minimized header for more map space */
 header.pf-v6-c-page__main-section {
     background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
     border-bottom: 1px solid var(--pf-v6-global--BorderColor--100);
     box-shadow: 0 1px 4px rgba(3, 3, 3, 0.12), 0 0 8px rgba(3, 3, 3, 0.06);
     margin-bottom: 0;
-    padding: 24px;
+    padding: 16px 24px; /* Slightly increased to ensure visibility */
+    min-height: auto; /* Allow minimal height */
+    display: block !important; /* Ensure header is visible */
+    position: relative;
+    z-index: 10;
 }
 
-/* Sidebar column positioning */
+/* Sidebar column positioning - force fixed width */
 .openshift-layout .pf-v6-l-grid__item.pf-m-4-col-on-lg {
-    grid-column: 2 !important;
     width: 320px !important;
     min-width: 320px !important;
     max-width: 320px !important;
+    flex: 0 0 320px !important; /* Fixed width sidebar */
     z-index: 100 !important;
     background: var(--pf-v6-global--BackgroundColor--100, #ffffff);
+    order: 2 !important;
+    /* Override any responsive classes */
+    display: block !important;
 }
 
 .sidebar-panels {
@@ -91,19 +126,22 @@ header.pf-v6-c-page__main-section {
     overflow-y: auto !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: var(--pf-v6-global--spacer--md, 16px) !important;
+    gap: var(--pf-v6-global--spacer--sm, 8px) !important; /* Reduced gap for cleaner spacing */
 }
 
 header .pf-v6-c-title {
-    margin-bottom: var(--pf-v6-global--spacer--sm, 8px);
+    margin-bottom: 0; /* Remove bottom margin */
     color: var(--pf-v6-global--Color--100, #151515);
     font-weight: 500;
-    font-size: 28px;
+    font-size: 20px; /* Slightly larger to ensure visibility */
+    line-height: 1.3;
+    display: block !important; /* Ensure title is visible */
 }
 
 header .pf-v6-c-content {
+    display: none; /* Hide subtitle to minimize header */
     color: var(--pf-v6-global--Color--200, #6a6e73);
-    font-size: 16px;
+    font-size: 14px;
     margin: 0;
 }
 
@@ -164,12 +202,13 @@ header .pf-v6-c-content {
     margin-top: var(--pf-v6-global--spacer--md, 16px);
 }
 
-/* Map container styling - FORCE LARGER SIZE */
+/* Map container styling - FULL VIEWPORT */
 .pf-v6-c-card.map-container {
-    flex: 1 !important;
-    min-height: 600px !important;
-    max-height: calc(100vh - 200px) !important;
     width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
     max-width: none !important;
     display: flex;
     flex-direction: column;
@@ -177,8 +216,7 @@ header .pf-v6-c-content {
 }
 
 .map-container .pf-v6-c-card__title {
-    margin-bottom: 0;
-    flex-shrink: 0 !important;
+    display: none !important; /* Hide title for full map immersion */
 }
 
 .map-container .pf-v6-c-card__body {
@@ -208,12 +246,19 @@ header .pf-v6-c-content {
 .panel-card {
     display: flex;
     flex-direction: column;
-    margin-bottom: var(--pf-v6-global--spacer--lg, 24px);
+    margin-bottom: 0; /* Remove margin since we use flexbox gap */
     box-shadow: 0 1px 4px rgba(3, 3, 3, 0.12), 0 0 8px rgba(3, 3, 3, 0.06);
 }
 
 .panel-card:not(:last-child) {
     flex: 0 0 auto;
+}
+
+/* Special constraint for Active VMs panel card */
+.panel-card:nth-child(2) {
+    flex: 0 0 auto;
+    max-height: 500px; /* Constrain entire card height */
+    overflow: hidden;
 }
 
 .panel-card:last-child {
@@ -432,6 +477,25 @@ header .pf-v6-c-content {
     background: var(--pf-v6-global--BorderColor--300, #a3a3a3);
 }
 
+/* Scrollbar styling for migrations below map */
+.migrations-below-map .migration-list-rows::-webkit-scrollbar {
+    width: 8px;
+}
+
+.migrations-below-map .migration-list-rows::-webkit-scrollbar-track {
+    background: var(--pf-v6-global--BackgroundColor--200, #f5f5f5);
+    border-radius: 4px;
+}
+
+.migrations-below-map .migration-list-rows::-webkit-scrollbar-thumb {
+    background: var(--pf-v6-global--BorderColor--200, #c7c7c7);
+    border-radius: 4px;
+}
+
+.migrations-below-map .migration-list-rows::-webkit-scrollbar-thumb:hover {
+    background: var(--pf-v6-global--BorderColor--300, #a3a3a3);
+}
+
 /* OpenShift-style Expandable Sections */
 .pf-v6-c-expandable-section {
     border: none;
@@ -533,20 +597,27 @@ header .pf-v6-c-content {
     color: var(--pf-v6-global--Color--200, #6a6e73);
 }
 
-/* Responsive adjustments */
+/* Mobile responsive adjustments - stack overlays */
 @media (max-width: 768px) {
-    .main-grid {
-        grid-template-columns: 1fr;
-        gap: var(--pf-v6-global--spacer--md, 16px);
+    .openshift-layout .pf-v6-l-grid__item:last-child {
+        position: fixed !important;
+        top: auto !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-height: 50vh !important;
+        border-radius: var(--pf-v6-global--BorderRadius--lg, 8px) var(--pf-v6-global--BorderRadius--lg, 8px) 0 0 !important;
     }
     
-    .sidebar-panels {
-        order: 2;
-    }
-    
-    .map-container {
-        order: 1;
-        min-height: 400px;
+    .migrations-below-map {
+        position: fixed !important;
+        top: 140px !important; /* Match desktop positioning to avoid header overlap */
+        left: 8px !important;
+        right: 8px !important;
+        width: auto !important; /* Auto width with left/right margins on mobile */
+        max-height: 60vh !important; /* Limit height on mobile for better usability */
+        border-radius: var(--pf-v6-global--BorderRadius--lg, 8px) !important;
     }
 }
 
@@ -718,6 +789,49 @@ header .pf-v6-c-content {
 .overlay-bottom-left { bottom: 80px; left: 12px; max-width: 360px; max-height: 380px; overflow: auto; } /* Reduced max-height from 420px to 380px */
 
 .overlay { z-index: 1400; }
+
+/* Right-side overlays for Datacenter Overview and Active VMs */
+.right-overlay {
+    position: absolute !important;
+    /* top is handled by JS to avoid conflicts during dynamic stacking */
+    right: var(--pf-v6-global--spacer--md, 16px) !important;
+    width: 320px !important;
+    max-height: calc(100vh - 32px) !important;
+    z-index: 1100 !important;
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    border-radius: var(--pf-v6-global--BorderRadius--lg, 8px) !important;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+}
+
+.right-overlay .pf-v6-c-card__header {
+    padding: 12px 16px !important;
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100) !important;
+}
+
+.right-overlay .pf-v6-c-card__body {
+    padding: 12px !important;
+    overflow-y: auto !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+}
+
+.right-overlay .vm-list-rows,
+.right-overlay .datacenter-view {
+    max-height: calc(100vh - 140px) !important;
+    overflow-y: auto !important;
+    padding-right: 6px !important; /* space for scrollbar */
+}
+
+/* Fallback safeguard: if JS doesn't set top, ensure overlays don't float above common header height */
+.right-overlay {
+    pointer-events: auto !important;
+}
+
+/* Vertical placement is handled dynamically by JS to avoid overlaps when panels expand/collapse */
 
 /* Enhanced VM list styling */
 .vm-list-rows { 
@@ -2078,13 +2192,13 @@ input:focus {
         padding: 0 12px 12px 12px;
     }
     
-    /* Enhanced header for mobile */
+    /* Minimized header for mobile */
     .pf-v6-c-page__main-section {
-        padding: var(--pf-v6-global--spacer--md);
+        padding: 8px 16px; /* Further reduced padding */
     }
     
     header {
-        margin: 12px 16px 8px 16px;
+        margin: 0; /* Remove margins */
     }
     
     header h1 {
@@ -2105,6 +2219,12 @@ input:focus {
     padding: 16px; /* Consistent padding with VM panel */
     border-top: 1px solid var(--pf-v6-global--BorderColor--100);
     background: transparent;
+}
+
+/* Ensure migrations below map header doesn't interfere with content */
+.migrations-below-map .pf-v6-c-card__header {
+    flex-shrink: 0; /* Prevent header from shrinking */
+    padding: 8px 16px; /* Reduced header padding for more content space */
 }
 
 .migration-panel .pf-v6-c-title {
@@ -2186,6 +2306,120 @@ input:focus {
     box-shadow: inherit !important;
     opacity: 1 !important;
     visibility: visible !important;
+}
+
+/* Constrain Active VMs panel height even when expanded to prevent overlap */
+.pf-v6-c-card .collapsible-content[data-section="active-vms"]:not(.collapsed),
+.collapsible-content[data-section="active-vms"]:not(.collapsed) {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    /* Force height constraint even with inline styles */
+    height: auto !important;
+    /* Remove any borders that might create extra lines */
+    border-bottom: none !important;
+}
+
+/* Ensure VM list within Active VMs panel is properly constrained */
+.pf-v6-c-card .collapsible-content[data-section="active-vms"]:not(.collapsed) .vm-list,
+.collapsible-content[data-section="active-vms"]:not(.collapsed) .vm-list {
+    max-height: 280px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scroll-behavior: smooth; /* Smooth scrolling */
+}
+
+/* Remove any bottom borders from elements within Active VMs panel */
+.collapsible-content[data-section="active-vms"]:not(.collapsed) .filter-section,
+.collapsible-content[data-section="active-vms"]:not(.collapsed) .vm-list-rows,
+.collapsible-content[data-section="active-vms"]:not(.collapsed) .content-section {
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+}
+
+/* Ensure the last child in Active VMs doesn't add extra spacing */
+.collapsible-content[data-section="active-vms"]:not(.collapsed) > *:last-child {
+    margin-bottom: 0 !important;
+    border-bottom: none !important;
+}
+
+/* Additional safety rule for Active VMs panel with highest specificity */
+.panel-card .pf-v6-c-card__body.collapsible-content[data-section="active-vms"]:not(.collapsed) {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    position: relative !important;
+    /* Prevent flex grow that might cause expansion */
+    flex-grow: 0 !important;
+    flex-shrink: 1 !important;
+    /* Remove any bottom borders or spacing that create extra lines */
+    border-bottom: none !important;
+    padding-bottom: var(--pf-v6-global--spacer--lg, 24px) !important;
+}
+
+/* Active Migrations panel as top-left overlay - single migration width */
+.migrations-below-map {
+    position: absolute !important;
+    left: var(--pf-v6-global--spacer--md, 16px) !important;
+    width: 350px !important; /* Fixed narrow width for single migration */
+    z-index: 1000 !important;
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    border-radius: var(--pf-v6-global--BorderRadius--lg, 8px) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+    overflow: hidden !important; /* Prevent content from spilling outside */
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    -webkit-box-sizing: border-box !important;
+    transition: top 180ms ease, max-height 180ms ease;
+}
+
+/* Compact layout for migrations below map - optimized for single migration display */
+.migrations-below-map .pf-v6-c-card__body {
+    flex: 1 !important; /* Take remaining space in flex container */
+    min-height: 0 !important; /* Allow flex shrinking */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 12px !important; /* Further reduced padding for more content space */
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+}
+
+/* Vertical layout for migration items when below map - single column */
+.migrations-below-map .migration-list-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pf-v6-global--spacer--sm, 8px);
+    overflow-y: auto !important; /* Force scrollable when content overflows */
+    overflow-x: hidden !important;
+    flex: 1 !important; /* Take all available space */
+    min-height: 0 !important; /* Allow flex shrinking */
+    padding-right: 4px; /* Space for scrollbar */
+    box-sizing: border-box !important;
+}
+
+.migrations-below-map .migration-item {
+    width: 100%; /* Full width of container */
+    min-width: auto;
+    max-width: none;
+    flex-shrink: 0; /* Prevent items from shrinking */
+}
+
+/* Style scrollbar for Active VMs panel */
+.collapsible-content[data-section="active-vms"]::-webkit-scrollbar {
+    width: 8px;
+}
+.collapsible-content[data-section="active-vms"]::-webkit-scrollbar-track {
+    background: var(--pf-v6-global--BackgroundColor--200);
+    border-radius: 4px;
+}
+.collapsible-content[data-section="active-vms"]::-webkit-scrollbar-thumb {
+    background: var(--pf-v6-global--BorderColor--200);
+    border-radius: 4px;
+}
+.collapsible-content[data-section="active-vms"]::-webkit-scrollbar-thumb:hover {
+    background: var(--pf-v6-global--BorderColor--300);
 }
 
 /* Ensure proper styling for datacenter and VM items in expanded panels */
@@ -2402,6 +2636,34 @@ input:focus {
     font-size: 12px;
     padding: 4px 8px;
     height: auto;
+}
+
+/* Fix refresh button icon visibility */
+#refresh-migrations {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: opacity 0.2s ease;
+}
+
+#refresh-migrations i {
+    display: inline-block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    font-size: 12px;
+}
+
+#refresh-migrations:hover i {
+    animation: refresh-spin 0.5s ease-in-out;
+}
+
+#refresh-migrations.refreshing i {
+    animation: refresh-spin 1s linear infinite;
+}
+
+@keyframes refresh-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .migration-item {

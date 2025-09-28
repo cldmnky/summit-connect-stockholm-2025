@@ -1,4 +1,16 @@
 ---
+description: Enforces use of the Makefile
+alwaysApply: true
+---
+description: Enforce the use of the targets in the Makefile
+alwaysApply: true
+---
+## Rule
+- **Always use the makefile targets to run the server**
+- **Prefer the `make dev &`commmand**
+- **Run the dev server in in the background**
+
+
 description: Enforces PatternFly Vibe coding standards and documentation best practices for all PatternFly React code.
 globs: "**/*.{js,jsx,ts,tsx,css,scss}"
 alwaysApply: true
@@ -29,3 +41,4 @@ This rule applies to all code generation, refactoring, and review tasks involvin
 
 ## Enforcement
 If code is generated or edited without following these documentation sources, request changes and point to the relevant section in the docs.
+

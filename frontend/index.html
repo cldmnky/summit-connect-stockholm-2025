@@ -51,13 +51,51 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Active Migrations Panel - Moved below map, always expanded -->
+                        <div class="pf-v6-c-card panel-card migrations-below-map">
+                            <div class="pf-v6-c-card__header">
+                                <div class="pf-v6-c-card__header-main">
+                                    <div class="title-with-count">
+                                        <h3 class="pf-v6-c-card__title">Migrations</h3>
+                                        <span class="count-badge" id="migration-count-badge">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pf-v6-c-card__body"
+                                <div class="filter-section">
+                                    <div class="filter-controls">
+                                        <div class="filter-group">
+                                            <label class="pf-v6-c-form__label">Show:</label>
+                                            <select id="migration-filter-mode" class="pf-v6-c-form-control pf-m-small">
+                                                <option value="active">Active Only</option>
+                                                <option value="all">All Migrations</option>
+                                                <option value="completed">Completed</option>
+                                            </select>
+                                        </div>
+                                        <button id="refresh-migrations" class="pf-v6-c-button pf-m-link pf-m-small">
+                                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                                            Refresh
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="content-section">
+                                    <div class="migration-list-rows" id="migration-list-rows">
+                                        <!-- Migration rows populated by app.js -->
+                                        <div class="empty-state">
+                                            <p class="pf-v6-c-content">No active migrations</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Sidebar panels -->
                     <div class="pf-v6-l-grid__item pf-m-4-col-on-lg pf-m-12-col-on-md">
                         <div class="sidebar-panels">
-                            <!-- Datacenter Overview Panel -->
-                            <div class="pf-v6-c-card panel-card">
+                            <!-- Datacenter Overview Panel (right overlay) -->
+                            <div class="pf-v6-c-card panel-card right-overlay" id="datacenter-overview-panel">
                                 <div class="pf-v6-c-card__header collapsible-header" data-target="datacenter-overview">
                                     <div class="collapsible-title">
                                         <div class="pf-v6-c-card__header-main">
@@ -75,8 +113,8 @@
                                 </div>
                             </div>
 
-                            <!-- Active VMs Panel -->
-                            <div class="pf-v6-c-card panel-card">
+                            <!-- Active VMs Panel (right overlay) -->
+                            <div class="pf-v6-c-card panel-card right-overlay" id="active-vms-panel">
                                 <div class="pf-v6-c-card__header collapsible-header" data-target="active-vms">
                                     <div class="collapsible-title">
                                         <div class="pf-v6-c-card__header-main">
@@ -116,51 +154,6 @@
                                     <div class="content-section">
                                         <div class="vm-list-rows" id="vm-list-rows">
                                             <!-- VM rows populated by app.js -->
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Active Migrations Panel -->
-                            <div class="pf-v6-c-card panel-card">
-                                <div class="pf-v6-c-card__header collapsible-header" data-target="active-migrations">
-                                    <div class="collapsible-title">
-                                        <div class="pf-v6-c-card__header-main">
-                                            <div class="title-with-count">
-                                                <h3 class="pf-v6-c-card__title">Active Migrations</h3>
-                                                <span class="count-badge" id="migration-count-badge">0</span>
-                                            </div>
-                                        </div>
-                                        <div class="pf-v6-c-card__actions">
-                                            <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle active migrations">
-                                                <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="pf-v6-c-card__body collapsible-content" data-section="active-migrations">
-                                    <div class="filter-section">
-                                        <div class="filter-controls">
-                                            <div class="filter-group">
-                                                <label class="pf-v6-c-form__label">Show:</label>
-                                                <select id="migration-filter-mode" class="pf-v6-c-form-control pf-m-small">
-                                                    <option value="active">Active Only</option>
-                                                    <option value="all">All Migrations</option>
-                                                    <option value="completed">Completed</option>
-                                                </select>
-                                            </div>
-                                            <button id="refresh-migrations" class="pf-v6-c-button pf-m-link pf-m-small">
-                                                <i class="fas fa-sync-alt" aria-hidden="true"></i>
-                                                Refresh
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="content-section">
-                                        <div class="migration-list-rows" id="migration-list-rows">
-                                            <!-- Migration rows populated by app.js -->
-                                            <div class="empty-state">
-                                                <p class="pf-v6-c-content">No active migrations</p>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>

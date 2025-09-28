@@ -16,12 +16,56 @@ class StockholmDatacentersMap {
         this.currentPopupDcId = null; // track which datacenter popup is open
         this.init();
     }
+
+    // Setup observers so panels reposition when their content changes size (expands/collapses)
+    setupRightOverlayObservers() {
+        try {
+            const dcPanel = document.getElementById('datacenter-overview-panel');
+            const vmPanel = document.getElementById('active-vms-panel');
+
+            const resizeCb = () => {
+                // Small throttle to avoid flood
+                if (this._repositionTimeout) clearTimeout(this._repositionTimeout);
+                this._repositionTimeout = setTimeout(() => {
+                    this.adjustMigrationsPanelPosition();
+                }, 80);
+            };
+
+            // Use ResizeObserver if available
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(resizeCb);
+                if (dcPanel) ro.observe(dcPanel);
+                if (vmPanel) ro.observe(vmPanel);
+                // also observe inner bodies if present so expansions inside trigger reposition
+                const dcBody = dcPanel ? dcPanel.querySelector('.pf-v6-c-card__body') : null;
+                const vmBody = vmPanel ? vmPanel.querySelector('.pf-v6-c-card__body') : null;
+                if (dcBody) ro.observe(dcBody);
+                if (vmBody) ro.observe(vmBody);
+                this._rightOverlayResizeObserver = ro;
+            } else {
+                // Fallback: MutationObserver for class changes that may expand/collapse
+                const mo = new MutationObserver(resizeCb);
+                const opts = { attributes: true, childList: true, subtree: true };
+                if (dcPanel) mo.observe(dcPanel, opts);
+                if (vmPanel) mo.observe(vmPanel, opts);
+                const dcBody = dcPanel ? dcPanel.querySelector('.pf-v6-c-card__body') : null;
+                const vmBody = vmPanel ? vmPanel.querySelector('.pf-v6-c-card__body') : null;
+                if (dcBody) mo.observe(dcBody, opts);
+                if (vmBody) mo.observe(vmBody, opts);
+                this._rightOverlayMutationObserver = mo;
+            }
+        } catch (e) {
+            console.warn('setupRightOverlayObservers error', e);
+        }
+    }
     
     async init() {
         await this.loadDatacenters();
         this.initMap();
         this.addDatacenters();
         this.setupControls();
+        // Ensure migration panel is positioned correctly relative to header
+        this.adjustMigrationsPanelPosition();
         
         // Initialize count badges
         this.updateVMCountBadge(0, 0);
@@ -52,9 +96,151 @@ class StockholmDatacentersMap {
         setTimeout(() => {
             this.forceCorrectStyling();
         }, 1500);
+
+        // Recalculate panel position on window resize
+        window.addEventListener('resize', () => {
+            this.adjustMigrationsPanelPosition();
+        });
+
+        // If map exists, adjust on relevant map events
+        if (this.map && this.map.on) {
+            const cb = () => this.adjustMigrationsPanelPosition();
+            this.map.on('zoomend moveend resize', cb);
+        }
+
+        // Set up observers so that when right-side panels expand/collapse we recompute stacking
+        this.setupRightOverlayObservers();
         
         // periodically refetch data to pick up migrations
         this.startAutoRefresh(5000); // every 5s
+    }
+
+    // Adjust Active Migrations panel position and max-height so it doesn't overlap header
+    adjustMigrationsPanelPosition() {
+        try {
+            const panel = document.querySelector('.migrations-below-map');
+            if (!panel) return;
+            // Find the visible header (patternfly main section header)
+            const header = document.querySelector('header.pf-v6-c-page__main-section');
+            const headerHeight = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+
+            // Measure Leaflet zoom/control area (prefer explicit zoom control element)
+            let controlsHeight = 0;
+            try {
+                // Prefer the zoom control specifically
+                let zoomEl = document.querySelector('.leaflet-control-zoom');
+                if (!zoomEl) {
+                    // Fallback: measure the grouped top-left controls container
+                    zoomEl = document.querySelector('.leaflet-control-container .leaflet-top.leaflet-left');
+                }
+                if (zoomEl) {
+                    controlsHeight = Math.ceil(zoomEl.getBoundingClientRect().height);
+                }
+            } catch (e) {
+                controlsHeight = 0;
+            }
+
+            // Add a small gap below header and controls
+            const gap = 12;
+            const topPx = headerHeight + controlsHeight + gap;
+
+            // Apply top offset and compute a dynamic maxHeight so the panel fits the viewport
+            panel.style.top = topPx + 'px';
+            // Use the actual migrations panel top as the base for right overlays when available
+            let baseTopForRight = topPx;
+            try {
+                const migrationsPanel = document.querySelector('.migrations-below-map');
+                if (migrationsPanel) {
+                    const rect = migrationsPanel.getBoundingClientRect();
+                    if (rect && typeof rect.top === 'number' && !isNaN(rect.top)) {
+                        // rect.top is relative to the viewport; reuse that value to align visually
+                        baseTopForRight = Math.round(rect.top);
+                    }
+                }
+            } catch (e) {
+                baseTopForRight = topPx;
+            }
+            const bottomGap = 40; // leave room from bottom of viewport
+            const maxH = Math.max(160, window.innerHeight - topPx - bottomGap);
+            panel.style.maxHeight = maxH + 'px';
+
+            // Ensure internal card body can scroll inside the panel
+            const body = panel.querySelector('.pf-v6-c-card__body');
+            if (body) {
+                body.style.maxHeight = (maxH - (headerHeight ? 0 : 48)) + 'px';
+                body.style.overflowY = 'auto';
+                body.style.minHeight = '0';
+            }
+
+            // Also adjust right-side overlays (datacenter overview and active VMs)
+            try {
+                const bottomGap = 40;
+                const remH = window.innerHeight - topPx - bottomGap;
+
+                const dcPanel = document.getElementById('datacenter-overview-panel');
+                const vmPanel = document.getElementById('active-vms-panel');
+
+                // Compute map bounding rect so we position right-overlays over the map area
+                let mapRect = null;
+                try {
+                    const mapEl = document.getElementById('map');
+                    if (mapEl) mapRect = mapEl.getBoundingClientRect();
+                } catch (e) {
+                    mapRect = null;
+                }
+
+                // compute right offset such that overlay sits inside the map's right edge with a margin
+                const defaultRightMargin = 16;
+                let rightOffsetPx = defaultRightMargin;
+                if (mapRect) {
+                    const viewportRightGap = Math.max(0, window.innerWidth - mapRect.right);
+                    rightOffsetPx = Math.max(8, viewportRightGap + defaultRightMargin);
+                }
+
+                // Use measured element heights to stack panels vertically without overlap
+                let currentTop = baseTopForRight;
+                const gapBetween = 12;
+                const rightYOffset = 12; // nudge right overlays slightly down from migrations top
+
+                if (dcPanel) {
+                    dcPanel.style.top = (currentTop + rightYOffset) + 'px';
+                    // anchor horizontally to stay inside map
+                    dcPanel.style.right = rightOffsetPx + 'px';
+                    // compute max height available for dcPanel (but let it expand up to 65% of remaining area)
+                    const dcMax = Math.max(180, Math.floor(remH * 0.65));
+                    dcPanel.style.maxHeight = dcMax + 'px';
+                    const dcBody = dcPanel.querySelector('.pf-v6-c-card__body');
+                    if (dcBody) {
+                        dcBody.style.maxHeight = (dcMax - 48) + 'px';
+                        dcBody.style.overflowY = 'auto';
+                        dcBody.style.minHeight = '0';
+                    }
+                    // compute actual height used (respecting maxHeight)
+                    const used = Math.min(dcPanel.getBoundingClientRect().height || dcMax, dcMax);
+                    currentTop = currentTop + rightYOffset + used + gapBetween;
+                }
+
+                if (vmPanel) {
+                    // place vmPanel at the next available top to avoid overlapping
+                    vmPanel.style.top = currentTop + 'px';
+                    // anchor horizontally to stay inside map
+                    vmPanel.style.right = rightOffsetPx + 'px';
+                    const vmMax = Math.max(160, window.innerHeight - currentTop - bottomGap);
+                    vmPanel.style.maxHeight = vmMax + 'px';
+                    const vmBody = vmPanel.querySelector('.pf-v6-c-card__body');
+                    if (vmBody) {
+                        vmBody.style.maxHeight = (vmMax - 48) + 'px';
+                        vmBody.style.overflowY = 'auto';
+                        vmBody.style.minHeight = '0';
+                    }
+                }
+            } catch (e) {
+                // don't let right-overlay adjustments break everything
+                console.warn('adjust right overlays failed', e);
+            }
+        } catch (e) {
+            console.warn('adjustMigrationsPanelPosition failed', e);
+        }
     }
     
     // Force correct styling with JavaScript
@@ -2418,14 +2604,28 @@ class StockholmDatacentersMap {
         const refreshBtn = document.getElementById('refresh-migrations');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', async () => {
-                refreshBtn.textContent = 'Loading...';
+                // Store original content to restore later
+                const originalHTML = refreshBtn.innerHTML;
+                
+                // Show loading state while preserving icon
+                const icon = refreshBtn.querySelector('i');
+                if (icon) {
+                    icon.className = 'fas fa-spinner fa-spin';
+                }
+                refreshBtn.classList.add('refreshing');
                 refreshBtn.disabled = true;
                 
-                await this.loadMigrations();
-                this.renderMigrationList();
-                await this.updateMigrationOverlays();
+                try {
+                    await this.loadMigrations();
+                    this.renderMigrationList();
+                    await this.updateMigrationOverlays();
+                } catch (error) {
+                    console.error('Error refreshing migrations:', error);
+                }
                 
-                refreshBtn.textContent = 'Refresh';
+                // Restore original state
+                refreshBtn.innerHTML = originalHTML;
+                refreshBtn.classList.remove('refreshing');
                 refreshBtn.disabled = false;
             });
         }
@@ -2492,8 +2692,16 @@ class StockholmDatacentersMap {
                     content.style.removeProperty('border');
                     content.style.removeProperty('padding');
                     content.style.removeProperty('margin');
-                    content.style.removeProperty('max-height');
-                    content.style.removeProperty('overflow');
+                    
+                    // Special handling for Active VMs panel - preserve height constraints
+                    if (target === 'active-vms') {
+                        // Don't remove max-height and overflow for Active VMs to prevent overlap
+                        console.log(`[DEBUG] Preserving height constraints for ${target}`);
+                    } else {
+                        content.style.removeProperty('max-height');
+                        content.style.removeProperty('overflow');
+                    }
+                    
                     content.style.removeProperty('opacity');
                     content.style.removeProperty('visibility');
                     content.style.removeProperty('box-shadow');
