@@ -381,29 +381,8 @@ class StockholmDatacentersMap {
             className: 'datacenter-marker',
             html: `
                 <div class="datacenter-marker-container">
-                    <div class="datacenter-point" style="
-                        width: 16px; 
-                        height: 16px; 
-                        background: #ff6b6b; 
-                        border: 3px solid #fff; 
-                        border-radius: 50%;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                    "></div>
-                    <div class="datacenter-label" style="
-                        position: absolute;
-                        left: 22px; /* slightly closer to the marker */
-                        top: -12px; /* nudge upward to align baseline with marker */
-                        color: white;
-                        padding: 3px 8px;
-                        border-radius: 4px;
-                        font-size: 12px;
-                        font-weight: 600;
-                        white-space: nowrap;
-                        font-family: 'Red Hat Text', Arial, sans-serif;
-                    ">${datacenter.name}</div>
+                    <div class="datacenter-point"></div>
+                    <div class="map-datacenter-label">${datacenter.name}</div>
                 </div>
             `,
             iconSize: [200, 30],
