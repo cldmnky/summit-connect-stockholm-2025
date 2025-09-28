@@ -1120,8 +1120,9 @@ input:focus {
 }
 
 .datacenter-marker:hover .datacenter-label {
-    background: rgba(0, 102, 204, 0.9);
-    transform: scale(1.05);
+    /* Keep the label background consistent on hover (avoid large blue ellipse artifact) */
+    background: rgba(21, 21, 21, 0.9); /* match default dark style */
+    transform: none; /* avoid scaling which can reveal container artefacts */
 }
 
 .datacenter-marker.active {

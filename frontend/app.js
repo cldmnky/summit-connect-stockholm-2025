@@ -394,16 +394,14 @@ class StockholmDatacentersMap {
                     "></div>
                     <div class="datacenter-label" style="
                         position: absolute;
-                        left: 25px;
-                        top: -8px;
-                        background: rgba(21, 21, 21, 0.9);
+                        left: 22px; /* slightly closer to the marker */
+                        top: -12px; /* nudge upward to align baseline with marker */
                         color: white;
-                        padding: 4px 8px;
+                        padding: 3px 8px;
                         border-radius: 4px;
                         font-size: 12px;
                         font-weight: 600;
                         white-space: nowrap;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                         font-family: 'Red Hat Text', Arial, sans-serif;
                     ">${datacenter.name}</div>
                 </div>
