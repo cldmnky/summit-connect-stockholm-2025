@@ -1,0 +1,23 @@
+apiVersion: shipwright.io/v1beta1
+kind: Build
+metadata:
+  namespace: summit-connect-demo
+  name: virt-corp-summit-app
+spec:
+  output:
+    image: quay.io/cldmnky/virt-corp-summit-app:latest
+  source:
+    git:
+      url: 'https://github.com/cldmnky/summit-connect-stockholm-2025.git'
+    contextDir: '.'
+    type: Git
+  strategy:
+    name: 'buildah'
+    kind: ClusterBuildStrategy
+  # Explicit strategyRef (some Shipwright versions prefer strategyRef)
+  strategyRef:
+    name: buildah
+    kind: ClusterBuildStrategy
+  volumes: []
+  paramValues: []
+  env: []

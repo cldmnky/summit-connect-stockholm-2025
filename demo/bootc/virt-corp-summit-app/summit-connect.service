@@ -1,0 +1,15 @@
+[Unit]
+Description=Summit Connect Stockholm 2025 Demo Application
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=summit-connect
+WorkingDirectory=/var/lib/summit-connect
+ExecStart=/usr/local/bin/summit-connect serve backend --port 3001 --config /etc/summit-connect/datacenters.yaml --watch-vms
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

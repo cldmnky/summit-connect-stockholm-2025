@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shipwright-builder
+  namespace: summit-connect-demo
+secrets:
+  - name: quay-push-secret
+
+# You may need to create a RoleBinding to allow this ServiceAccount to
+# access secrets in the namespace depending on your cluster RBAC setup.

@@ -1,0 +1,12 @@
+apiVersion: shipwright.io/v1alpha1
+kind: BuildRun
+metadata:
+  name: virt-corp-summit-app-buildrun
+  namespace: summit-connect-demo
+spec:
+  buildRef:
+    name: virt-corp-summit-app
+  serviceAccount:
+    serviceAccountName: shipwright-builder
+  timeout: 30m
+  # Optional timeout and params can be added here
