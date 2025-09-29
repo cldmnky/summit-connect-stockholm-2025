@@ -190,6 +190,17 @@ if [[ "$DO_QCOW" == true ]]; then
 
 			echo "Found Containerfile.qcow2; building qcow container image -> $QCOW_IMAGE_TAG"
 			# Build context should be the script dir so the Containerfile.qcow2 can reference files in output/
+			# Ensure the qcow file the Containerfile expects is present in the build context.
+			QCOW_SRC="$OUTPUT_DIR/qcow2/disk.qcow2"
+			QCOW_DST="$SCRIPT_DIR/disk.qcow2"
+			CLEANUP_QCOW=false
+			if [[ -f "$QCOW_SRC" ]]; then
+				echo "Copying $QCOW_SRC -> $QCOW_DST for build context"
+				cp -f "$QCOW_SRC" "$QCOW_DST"
+				CLEANUP_QCOW=true
+			else
+				echo "Warning: expected qcow at $QCOW_SRC not found; Containerfile.qcow2 ADD may fail"
+			fi
 			pushd "$SCRIPT_DIR" >/dev/null
 			if [[ "$CLI" == "podman" ]]; then
 				$CLI build -f Containerfile.qcow2 -t "$QCOW_IMAGE_TAG" .
@@ -197,6 +208,10 @@ if [[ "$DO_QCOW" == true ]]; then
 				$CLI build -f Containerfile.qcow2 -t "$QCOW_IMAGE_TAG" .
 			fi
 			popd >/dev/null
+			# Remove temporary copied qcow if we created it
+			if [[ "$CLEANUP_QCOW" == true ]]; then
+				rm -f "$QCOW_DST"
+			fi
 
 			if [[ "$NO_PUSH" == true ]]; then
 				echo "Skipping push of qcow image (--no-push). Built image: $QCOW_IMAGE_TAG"
