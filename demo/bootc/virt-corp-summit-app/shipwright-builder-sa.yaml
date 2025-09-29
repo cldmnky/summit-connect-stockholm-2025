@@ -5,6 +5,8 @@ metadata:
   namespace: summit-connect-demo
 secrets:
   - name: quay-push-secret
+imagePullSecrets:
+  - name: quay-push-secret
 
 # You may need to create a RoleBinding to allow this ServiceAccount to
 # access secrets in the namespace depending on your cluster RBAC setup.

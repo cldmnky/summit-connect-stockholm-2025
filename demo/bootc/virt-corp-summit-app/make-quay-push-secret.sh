@@ -29,21 +29,33 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 3
 fi
 
-# Extract the quay.io auth entry
-AUTH_B64=$(jq -r '.auths["quay.io"].auth // empty' "$AUTH_JSON")
-USERNAME=$(jq -r '.auths["quay.io"].username // empty' "$AUTH_JSON")
-PASSWORD=$(jq -r '.auths["quay.io"].password // empty' "$AUTH_JSON")
+# Extract credentials for quay.io and registry.redhat.io from auth.json
+QUAY_AUTH_B64=$(jq -r '.auths["quay.io"].auth // empty' "$AUTH_JSON")
+QUAY_USER=$(jq -r '.auths["quay.io"].username // empty' "$AUTH_JSON")
+QUAY_PASS=$(jq -r '.auths["quay.io"].password // empty' "$AUTH_JSON")
 
-if [[ -z "$AUTH_B64" ]]; then
-  if [[ -z "$USERNAME" || -z "$PASSWORD" ]]; then
-    echo "ERROR: quay.io entry lacks 'auth' and username/password fields" >&2
-    exit 4
-  fi
-  AUTH_B64=$(printf "%s:%s" "$USERNAME" "$PASSWORD" | base64 -w0)
+RHEL_AUTH_B64=$(jq -r '.auths["registry.redhat.io"].auth // empty' "$AUTH_JSON")
+RHEL_USER=$(jq -r '.auths["registry.redhat.io"].username // empty' "$AUTH_JSON")
+RHEL_PASS=$(jq -r '.auths["registry.redhat.io"].password // empty' "$AUTH_JSON")
+
+# If auth fields are missing but username/password exist, construct auth
+if [[ -z "$QUAY_AUTH_B64" && -n "$QUAY_USER" && -n "$QUAY_PASS" ]]; then
+  QUAY_AUTH_B64=$(printf "%s:%s" "$QUAY_USER" "$QUAY_PASS" | base64 -w0)
 fi
 
-# Build dockerconfigjson content and base64 encode it
-DOCKERCFG=$(jq -n --arg auth "$AUTH_B64" '{auths: {"quay.io": {auth: $auth}}}')
+if [[ -z "$RHEL_AUTH_B64" && -n "$RHEL_USER" && -n "$RHEL_PASS" ]]; then
+  RHEL_AUTH_B64=$(printf "%s:%s" "$RHEL_USER" "$RHEL_PASS" | base64 -w0)
+fi
+
+# Build dockerconfigjson content including both registries if present
+DOCKERCFG=$(jq -n --arg qa "$QUAY_AUTH_B64" --arg ra "$RHEL_AUTH_B64" '
+  {
+    auths: (
+      {} 
+      + (if $qa != "" then {"quay.io": {auth: $qa}} else {} end)
+      + (if $ra != "" then {"registry.redhat.io": {auth: $ra}} else {} end)
+    )
+  }')
 DOCKERCFG_B64=$(printf '%s' "$DOCKERCFG" | base64 -w0)
 
 if [[ "$apply" == true ]]; then
@@ -59,6 +71,8 @@ kind: Secret
 metadata:
   name: quay-push-secret
   namespace: ${NAMESPACE}
+  annotations:
+    build.shipwright.io/referenced.secret: "true"
 type: kubernetes.io/dockerconfigjson
 data:
   .dockerconfigjson: "${DOCKERCFG_B64}"
@@ -73,6 +87,8 @@ kind: Secret
 metadata:
   name: quay-push-secret
   namespace: ${NAMESPACE}
+  annotations:
+    build.shipwright.io/referenced.secret: "true"
 type: kubernetes.io/dockerconfigjson
 data:
   .dockerconfigjson: "${DOCKERCFG_B64}"
