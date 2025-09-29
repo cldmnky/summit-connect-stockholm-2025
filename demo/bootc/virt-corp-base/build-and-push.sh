@@ -1,31 +1,93 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build and push script for Containerfile.bootc
-# Builds the image, tags it quay.io/cldmnky/summit-connect-base:latest and pushes it.
-# Preference: use podman when available, otherwise fall back to docker.
+# build-and-push.sh
+# Builds the image from Containerfile.bootc, optionally pushes it, and can
+# convert the pushed image into a qcow2 using the Red Hat bootc image builder.
 
 IMAGE_DEFAULT="quay.io/cldmnky/summit-connect-base:latest"
 CONTAINERFILE="Containerfile.bootc"
 RETRIES=3
+BUILDER_DEFAULT="registry.redhat.io/rhel10/bootc-image-builder:latest"
+QCOW_OUTPUT_DIR="output"
 
 usage() {
 	cat <<EOF
-Usage: $0 [image]
+Usage: $0 [image] [options]
 
-image: optional full image name (default: $IMAGE_DEFAULT)
+Positional arguments:
+	image                Optional image name (default: $IMAGE_DEFAULT)
 
-This script will build '${CONTAINERFILE}' and push the resulting image to the registry.
-It prefers 'podman' if installed, otherwise uses 'docker'.
+Options:
+	-h, --help           Show this help
+	--qcow               After build/push, run the bootc image builder to create a qcow2
+	--no-qcow            Do not run the qcow builder (default)
+	--no-push            Build but do not push the image
+	--builder <image>    Use this bootc builder image (default: $BUILDER_DEFAULT)
+	--output <dir>       Output directory for qcow (default: $QCOW_OUTPUT_DIR)
+	--retries <N>        Number of push retries (default: $RETRIES)
+
+Examples:
+	# build, push, then create qcow2
+	$0 --qcow
+
+	# build and push a custom image but skip the qcow step
+	$0 my-registry.example.com/myorg/myimage:tag --no-qcow
+
 EOF
 }
 
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-	usage
-	exit 0
-fi
+DO_QCOW=false
+NO_PUSH=false
+BUILDER="$BUILDER_DEFAULT"
 
-IMAGE="${1:-$IMAGE_DEFAULT}"
+IMAGE=""
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		-h|--help)
+			usage
+			exit 0
+			;;
+		--qcow)
+			DO_QCOW=true; shift
+			;;
+		--no-qcow)
+			DO_QCOW=false; shift
+			;;
+		--no-push)
+			NO_PUSH=true; shift
+			;;
+		--builder)
+			BUILDER="$2"; shift 2
+			;;
+		--output)
+			QCOW_OUTPUT_DIR="$2"; shift 2
+			;;
+				--qcow-image)
+					QCOW_IMAGE="$2"; shift 2
+					;;
+		--retries)
+			RETRIES="$2"; shift 2
+			;;
+		--)
+			shift; break
+			;;
+		-*)
+			echo "Unknown option: $1" >&2; usage; exit 1
+			;;
+		*)
+			if [[ -z "$IMAGE" ]]; then
+				IMAGE="$1"; shift
+			else
+				echo "Unexpected argument: $1" >&2; usage; exit 1
+			fi
+			;;
+	esac
+done
+
+IMAGE="${IMAGE:-$IMAGE_DEFAULT}"
+QCOW_IMAGE=""
 
 if [[ ! -f "$CONTAINERFILE" ]]; then
 	echo "ERROR: ${CONTAINERFILE} not found in $(pwd). Run this script from the directory that contains ${CONTAINERFILE}."
@@ -46,30 +108,109 @@ echo "Building ${CONTAINERFILE} -> ${IMAGE}"
 
 # Build the image
 if [[ "$CLI" == "podman" ]]; then
-	# Podman supports same options as docker for basic builds
 	$CLI build -f "$CONTAINERFILE" -t "$IMAGE" .
 else
-	# Docker: use plain build
 	$CLI build -f "$CONTAINERFILE" -t "$IMAGE" .
 fi
 
-echo "Build complete. Pushing ${IMAGE}"
-
-push_attempts=0
-until [[ $push_attempts -ge $RETRIES ]]; do
-	set +e
-	$CLI push "$IMAGE"
-	rc=$?
-	set -e
-	if [[ $rc -eq 0 ]]; then
-		echo "Push succeeded"
-		exit 0
+if [[ "$NO_PUSH" == true ]]; then
+	echo "Skipping push (--no-push). Built image: $IMAGE"
+else
+	echo "Build complete. Pushing ${IMAGE}"
+	push_attempts=0
+	until [[ $push_attempts -ge $RETRIES ]]; do
+		set +e
+		$CLI push "$IMAGE"
+		rc=$?
+		set -e
+		if [[ $rc -eq 0 ]]; then
+			echo "Push succeeded"
+			break
+		fi
+		push_attempts=$((push_attempts + 1))
+		echo "Push failed (attempt ${push_attempts}/${RETRIES}), retrying in $((push_attempts * 2))s..."
+		sleep $((push_attempts * 2))
+	done
+	if [[ $push_attempts -ge $RETRIES ]]; then
+		echo "ERROR: push failed after ${RETRIES} attempts"
+		exit 4
 	fi
-	push_attempts=$((push_attempts + 1))
-	echo "Push failed (attempt ${push_attempts}/${RETRIES}), retrying in $((push_attempts * 2))s..."
-	sleep $((push_attempts * 2))
-done
+fi
 
-echo "ERROR: push failed after ${RETRIES} attempts"
-exit 4
+if [[ "$DO_QCOW" == true ]]; then
+	# QCOW creation requires podman and likely sudo for --privileged
+	if ! command -v podman >/dev/null 2>&1; then
+		echo "ERROR: podman required to run the bootc image builder. Install podman."
+		exit 5
+	fi
+
+	SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+	OUTPUT_DIR="$SCRIPT_DIR/$QCOW_OUTPUT_DIR"
+	mkdir -p "$OUTPUT_DIR"
+
+	echo "Make sure you're logged into the registries if they require authentication:"
+	echo "  podman login quay.io"
+	echo "  podman login registry.redhat.io"
+
+	echo "Running bootc image builder... output will be written to: $OUTPUT_DIR"
+
+	cmd=(sudo podman run --rm --privileged --pull=newer --security-opt label=type:unconfined_t \
+		-v "$OUTPUT_DIR":/output \
+		-v /var/lib/containers/storage:/var/lib/containers/storage \
+		"$BUILDER" --type qcow2 "$IMAGE")
+
+	echo "Command: ${cmd[*]}"
+	"${cmd[@]}"
+
+	echo "Builder finished. Check $OUTPUT_DIR for the generated qcow2 file(s)."
+
+		# If a Containerfile.qcow2 exists, build it into a container image that bundles the qcow
+		CONTAINERFILE_QCOW="$SCRIPT_DIR/Containerfile.qcow2"
+		if [[ -f "$CONTAINERFILE_QCOW" ]]; then
+			# Default qcow image tag: same repo as IMAGE but with :qcow2
+			if [[ -z "${QCOW_IMAGE:-}" ]]; then
+				QCOW_IMAGE_TAG="${IMAGE%:*}:qcow2"
+			else
+				QCOW_IMAGE_TAG="$QCOW_IMAGE"
+			fi
+
+			echo "Found Containerfile.qcow2; building qcow container image -> $QCOW_IMAGE_TAG"
+			# Build context should be the script dir so the Containerfile.qcow2 can reference files in output/
+			pushd "$SCRIPT_DIR" >/dev/null
+			if [[ "$CLI" == "podman" ]]; then
+				$CLI build -f Containerfile.qcow2 -t "$QCOW_IMAGE_TAG" .
+			else
+				$CLI build -f Containerfile.qcow2 -t "$QCOW_IMAGE_TAG" .
+			fi
+			popd >/dev/null
+
+			if [[ "$NO_PUSH" == true ]]; then
+				echo "Skipping push of qcow image (--no-push). Built image: $QCOW_IMAGE_TAG"
+			else
+				echo "Pushing qcow image: $QCOW_IMAGE_TAG"
+				push_attempts=0
+				until [[ $push_attempts -ge $RETRIES ]]; do
+					set +e
+					$CLI push "$QCOW_IMAGE_TAG"
+					rc=$?
+					set -e
+					if [[ $rc -eq 0 ]]; then
+						echo "Push of qcow image succeeded"
+						break
+					fi
+					push_attempts=$((push_attempts + 1))
+					echo "qcow image push failed (attempt ${push_attempts}/${RETRIES}), retrying in $((push_attempts * 2))s..."
+					sleep $((push_attempts * 2))
+				done
+				if [[ $push_attempts -ge $RETRIES ]]; then
+					echo "ERROR: qcow image push failed after ${RETRIES} attempts"
+					exit 6
+				fi
+			fi
+		else
+			echo "No Containerfile.qcow2 found in $SCRIPT_DIR; skipping qcow image build."
+		fi
+fi
+
+echo "All done."
 
