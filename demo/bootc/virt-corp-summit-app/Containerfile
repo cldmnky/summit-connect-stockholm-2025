@@ -15,13 +15,10 @@ LABEL MAINTAINER="Virt Corp <rhel@virt-corp.com>"
 
 # Copy the compiled Go binary and frontend assets from the builder
 COPY --from=builder /workspace/summit-connect /usr/local/bin/summit-connect
-COPY --from=builder /workspace/frontend/ /var/lib/summit-connect/frontend/
 
 # Systemd service for the Summit Connect application
 COPY summit-connect.service /etc/systemd/system/summit-connect.service
 RUN useradd -r -s /bin/false summit-connect && \
-    mkdir -p /var/lib/summit-connect && \
-    chown -R summit-connect:summit-connect /var/lib/summit-connect && \
     chmod +x /usr/local/bin/summit-connect && \
     systemctl enable summit-connect
 
