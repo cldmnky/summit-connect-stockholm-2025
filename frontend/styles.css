@@ -196,11 +196,33 @@ header .pf-v6-c-title {
     display: block !important; /* Ensure title is visible */
 }
 
-header .pf-v6-c-content {
-    display: none; /* Hide subtitle to minimize header */
-    color: var(--pf-v6-global--Color--200, #6a6e73);
-    font-size: 14px;
-    margin: 0;
+/* Keynote-style header overrides */
+.keynote-header {
+    text-align: center;
+    display: block !important;
+    width: 100%;
+}
+
+.keynote-header .pf-v6-c-title {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.6px;
+    color: var(--pf-v6-global--palette--blue-400, #0b66c3) !important;
+    margin-bottom: 6px !important;
+}
+
+.keynote-header .pf-v6-c-content {
+    display: block !important; /* Show subtitle for keynote */
+    color: var(--pf-v6-global--Color--200, #6a6e73) !important;
+    font-size: 16px !important;
+    margin: 0 auto !important;
+    max-width: 900px !important;
+    opacity: 0.95;
+}
+
+/* Give the header area more breathing room like a slide */
+header.pf-v6-c-page__main-section {
+    padding: 28px 24px !important;
 }
 
 /* OpenShift-style Cards */
