@@ -154,6 +154,20 @@ if [[ "$DO_QCOW" == true ]]; then
 
 	echo "Running bootc image builder... output will be written to: $OUTPUT_DIR"
 
+	# Ensure root's podman store has the image (the builder runs under sudo)
+	if ! sudo podman image exists "$IMAGE" >/dev/null 2>&1; then
+		MOVE_SCRIPT="$SCRIPT_DIR/move-image-to-root.sh"
+		if [[ -x "$MOVE_SCRIPT" ]]; then
+			echo "Image $IMAGE not present in root's podman store. Transferring using $MOVE_SCRIPT"
+			"$MOVE_SCRIPT" "$IMAGE"
+		else
+			echo "move-image-to-root.sh not found at $MOVE_SCRIPT. Please ensure the image is available to root (sudo podman pull $IMAGE)"
+			exit 7
+		fi
+	else
+		echo "Image present in root's podman store."
+	fi
+
 	cmd=(sudo podman run --rm --privileged --pull=newer --security-opt label=type:unconfined_t \
 		-v "$OUTPUT_DIR":/output \
 		-v /var/lib/containers/storage:/var/lib/containers/storage \
