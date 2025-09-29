@@ -500,8 +500,12 @@ func (cw *ClusterWatcher) updateVMInDatabase(vm *models.VM) error {
 			return fmt.Errorf("failed to add VM to database: %w", err)
 		}
 		log.Printf("Added new VM %s to datacenter %s", vm.Name, cw.config.DatacenterID)
+		// notify listeners
+		DefaultHub.BroadcastEvent("vm:added", map[string]interface{}{"datacenter": cw.config.DatacenterID, "vm": vm})
 	} else {
 		log.Printf("Updated VM %s in datacenter %s", vm.Name, cw.config.DatacenterID)
+		// notify listeners
+		DefaultHub.BroadcastEvent("vm:updated", map[string]interface{}{"datacenter": cw.config.DatacenterID, "vm": vm})
 	}
 
 	return nil
@@ -520,6 +524,8 @@ func (cw *ClusterWatcher) removeVMFromDatabase(vmName string) error {
 	}
 
 	log.Printf("Removed VM %s from datacenter %s", vmName, cw.config.DatacenterID)
+	// notify listeners
+	DefaultHub.BroadcastEvent("vm:removed", map[string]interface{}{"datacenter": cw.config.DatacenterID, "vmName": vmName})
 	return nil
 }
 
@@ -717,6 +723,7 @@ func (cw *ClusterWatcher) updateMigrationInDatabase(migration *models.Migration)
 			return fmt.Errorf("failed to add migration to database: %w", err)
 		}
 		log.Printf("Added new migration %s to datacenter %s", migration.ID, cw.config.DatacenterID)
+		DefaultHub.BroadcastEvent("migration:added", map[string]interface{}{"datacenter": cw.config.DatacenterID, "migration": migration})
 	} else {
 		// Migration exists, update it (preserve creation time)
 		migration.CreatedAt = existing.CreatedAt
@@ -725,6 +732,7 @@ func (cw *ClusterWatcher) updateMigrationInDatabase(migration *models.Migration)
 			return fmt.Errorf("failed to update migration in database: %w", err)
 		}
 		log.Printf("Updated migration %s in datacenter %s", migration.ID, cw.config.DatacenterID)
+		DefaultHub.BroadcastEvent("migration:updated", map[string]interface{}{"datacenter": cw.config.DatacenterID, "migration": migration})
 	}
 
 	// Update the associated VM's migration status
@@ -767,5 +775,6 @@ func (cw *ClusterWatcher) removeMigrationFromDatabase(migrationName string) erro
 	}
 
 	log.Printf("Removed migration %s from datacenter %s", migrationName, cw.config.DatacenterID)
+	DefaultHub.BroadcastEvent("migration:removed", map[string]interface{}{"datacenter": cw.config.DatacenterID, "migrationName": migrationName})
 	return nil
 }

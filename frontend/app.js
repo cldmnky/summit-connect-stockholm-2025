@@ -113,6 +113,14 @@ class StockholmDatacentersMap {
         
         // periodically refetch data to pick up migrations
         this.startAutoRefresh(5000); // every 5s
+
+        // Setup Server-Sent Events to receive push notifications from the server
+        // If SSE is unavailable the existing polling will continue as a fallback.
+        try {
+            this.setupSSE();
+        } catch (e) {
+            console.warn('SSE setup failed, continuing with polling fallback', e);
+        }
     }
 
     // Adjust Active Migrations panel position and max-height so it doesn't overlap header
@@ -325,6 +333,8 @@ class StockholmDatacentersMap {
     }
     
     initMap() {
+        // (layout-debug removed) Map initialization follows
+
         // Initialize map centered on Stockholm
         this.map = L.map('map').setView([59.3293, 18.0686], 11);
         
@@ -358,6 +368,17 @@ class StockholmDatacentersMap {
         });
         
         console.log('Map initialized at Stockholm coordinates');
+
+        // After initialization, ensure Leaflet recalculates size (help when layout changed)
+        setTimeout(() => {
+            try {
+                this.map.invalidateSize(true);
+            } catch (e) { /* ignore */ }
+            try {
+                const ev = new Event('resize');
+                window.dispatchEvent(ev);
+            } catch (e) {}
+        }, 200);
     }
     
     addDatacenters(fitBounds = true) {
@@ -848,6 +869,94 @@ class StockholmDatacentersMap {
     startAutoRefresh(intervalMs = 10000) {
         // store interval id so it could be cleared later if needed
         this._autoRefreshInterval = setInterval(() => this.fetchAndMergeDatacenters(), intervalMs);
+    }
+
+    // Setup Server-Sent Events connection to receive push notifications.
+    // If connected, we will temporarily stop the periodic polling to avoid duplicate work.
+    setupSSE() {
+        // configurable endpoint
+        this._sseUrl = '/api/v1/events';
+        this._sseBackoff = 1000; // initial backoff ms
+        this._sseMaxBackoff = 30000;
+        this._sseEnabled = true;
+        this._sseConnected = false;
+        this._sseSource = null;
+        this.connectSSE();
+    }
+
+    connectSSE() {
+        if (!this._sseEnabled) return;
+        try {
+            const es = new EventSource(this._sseUrl);
+            this._sseSource = es;
+
+            es.onopen = () => {
+                console.log('[SSE] connected');
+                this._sseConnected = true;
+                // Stop polling while SSE is active to reduce duplicate fetches
+                if (this._autoRefreshInterval) {
+                    clearInterval(this._autoRefreshInterval);
+                    this._autoRefreshInterval = null;
+                }
+                // Reset backoff
+                this._sseBackoff = 1000;
+                // Do an immediate fetch to ensure we're synced
+                this.fetchAndMergeDatacenters();
+            };
+
+            es.onmessage = (e) => {
+                try {
+                    const msg = JSON.parse(e.data);
+                    // For simplicity: on any VM/migration event ask client to refresh
+                    if (msg && msg.type) {
+                        const t = msg.type;
+                        if (t.startsWith('vm:') || t.startsWith('migration:') || t === 'datacenters:updated' || t === 'refresh') {
+                            console.log('[SSE] event received, refreshing data:', t);
+                            this.fetchAndMergeDatacenters();
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[SSE] invalid event payload', err, e.data);
+                }
+            };
+
+            es.onerror = (err) => {
+                console.warn('[SSE] error or disconnected', err);
+                // If closed, mark disconnected and try reconnect with backoff
+                if (this._sseSource) {
+                    try { this._sseSource.close(); } catch (e) {}
+                }
+                this._sseConnected = false;
+                this._sseSource = null;
+
+                // Resume polling as fallback if not already
+                if (!this._autoRefreshInterval) {
+                    this.startAutoRefresh(15000); // slower fallback polling
+                }
+
+                // Reconnect with exponential backoff
+                const backoff = this._sseBackoff || 1000;
+                setTimeout(() => {
+                    this._sseBackoff = Math.min((this._sseBackoff || 1000) * 1.6, this._sseMaxBackoff);
+                    this.connectSSE();
+                }, backoff + Math.floor(Math.random() * 400));
+            };
+        } catch (e) {
+            console.warn('[SSE] setup failed', e);
+            // Ensure polling fallback
+            if (!this._autoRefreshInterval) this.startAutoRefresh(15000);
+        }
+    }
+
+    stopSSE() {
+        this._sseEnabled = false;
+        if (this._sseSource) {
+            try { this._sseSource.close(); } catch (e) {}
+            this._sseSource = null;
+        }
+        this._sseConnected = false;
+        // Ensure polling is running
+        if (!this._autoRefreshInterval) this.startAutoRefresh(15000);
     }
 
     async fetchAndMergeDatacenters() {

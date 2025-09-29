@@ -45,21 +45,26 @@ main.pf-v6-c-page__main-section {
 
 /* OpenShift-style layout grid - FORCE FULL HEIGHT */
 .openshift-layout {
+    /* Use a two-column flex layout so the map and sidebar sit side-by-side */
+    display: flex !important;
+    gap: var(--pf-t--global--spacer--xl, 24px) !important;
+    align-items: stretch !important;
     position: relative !important;
     height: calc(100vh - 120px) !important; /* Adjusted to account for minimal visible header */
     min-height: 600px !important;
     overflow: hidden !important;
 }
 
-/* Map takes full viewport */
+/* Map column participates in flow (not absolutely positioned) so the sidebar can sit to its right */
 .openshift-layout .pf-v6-l-grid__item:first-child {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100% !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: auto !important;
     height: 100% !important;
+    flex: 1 1 auto !important; /* let map grow */
     z-index: 1 !important;
 }
 
@@ -164,14 +169,13 @@ header.pf-v6-c-page__main-section {
 
 /* Sidebar column positioning - force fixed width */
 .openshift-layout .pf-v6-l-grid__item.pf-m-4-col-on-lg {
+    flex: 0 0 320px !important; /* Fixed width sidebar */
     width: 320px !important;
     min-width: 320px !important;
     max-width: 320px !important;
-    flex: 0 0 320px !important; /* Fixed width sidebar */
     z-index: 100 !important;
     background: var(--pf-v6-global--BackgroundColor--100, #ffffff);
     order: 2 !important;
-    /* Override any responsive classes */
     display: block !important;
 }
 
@@ -859,46 +863,44 @@ header .pf-v6-c-content {
 
 .overlay { z-index: 1400; }
 
-/* Right-side overlays for Datacenter Overview and Active VMs */
-.right-overlay {
-    position: absolute !important;
-    /* top is handled by JS to avoid conflicts during dynamic stacking */
-    right: var(--pf-v6-global--spacer--md, 16px) !important;
-    width: 320px !important;
-    max-height: calc(100vh - 32px) !important;
-    z-index: 1100 !important;
+
+/* Right-side overview panel (static, part of the grid) */
+#overview-panel, .datacenter-panel {
+    position: relative !important;
+    width: 100% !important;
+    max-height: none !important;
+    z-index: 2 !important;
     background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
     border-radius: var(--pf-v6-global--BorderRadius--lg, 8px) !important;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.18) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06) !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
     box-sizing: border-box !important;
 }
 
-.right-overlay .pf-v6-c-card__header {
+#overview-panel .pf-v6-c-card__header,
+.datacenter-panel .pf-v6-c-card__header {
     padding: 12px 16px !important;
     border-bottom: 1px solid var(--pf-v6-global--BorderColor--100) !important;
 }
 
-.right-overlay .pf-v6-c-card__body {
+#overview-panel .pf-v6-c-card__body,
+.datacenter-panel .pf-v6-c-card__body {
     padding: 12px !important;
     overflow-y: auto !important;
     min-height: 0 !important;
     box-sizing: border-box !important;
 }
 
-.right-overlay .vm-list-rows,
-.right-overlay .datacenter-view {
-    max-height: calc(100vh - 140px) !important;
+.datacenter-section .datacenter-view,
+.vm-section .vm-list-rows {
+    max-height: calc(100vh - 260px) !important;
     overflow-y: auto !important;
     padding-right: 6px !important; /* space for scrollbar */
 }
 
-/* Fallback safeguard: if JS doesn't set top, ensure overlays don't float above common header height */
-.right-overlay {
-    pointer-events: auto !important;
-}
+/* old right-overlay rules removed — overview panel is now part of the layout */
 
 /* Vertical placement is handled dynamically by JS to avoid overlaps when panels expand/collapse */
 
@@ -1927,6 +1929,85 @@ input:focus {
     font-size: 15px; /* Slightly smaller font */
 }
 
+/* ------------------------------------------------------------------
+   High-specificity override: Force two-column layout (map left, fixed
+   width overview right). This intentionally lives at the end of the
+   stylesheet so it wins over PatternFly rules and previously defined
+   selectors while preserving mobile responsive behavior above.
+   ------------------------------------------------------------------ */
+.pf-v6-c-page .openshift-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 24px !important;
+    height: calc(100vh - 120px) !important;
+    min-height: 600px !important;
+    overflow: hidden !important;
+}
+
+.pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-8-col-on-lg,
+.pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-9-col-on-lg {
+    /* Left / main column: map should participate in flow and grow */
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    order: 1 !important;
+    z-index: 1 !important;
+}
+
+.pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-4-col-on-lg,
+.pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-3-col-on-lg,
+.pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item:last-child {
+    /* Right / sidebar: fixed width and part of normal flow */
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    left: auto !important;
+    bottom: auto !important;
+    flex: 0 0 320px !important;
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
+    height: 100% !important;
+    order: 2 !important;
+    z-index: 20 !important;
+    margin: 0 !important;
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+}
+
+/* Make sure overview panel itself is not absolutely positioned */
+#overview-panel {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Keep mobile responsive behavior intact (reapply earlier mobile overrides) */
+@media (max-width: 768px) {
+    .pf-v6-c-page .openshift-layout {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+    }
+    .pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-4-col-on-lg,
+    .pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-3-col-on-lg {
+        position: fixed !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        max-height: 50vh !important;
+        z-index: 9999 !important;
+    }
+}
+
 /* VM list panel improvements */
 .vm-list-panel {
     margin-top: 0;
@@ -2627,6 +2708,53 @@ input:focus {
     color: var(--pf-v6-global--Color--dark-100);
 }
 
+/* Make the input area grow to fill available space in filter-controls */
+.filter-controls .filter-input {
+    flex: 1 1 auto;
+    min-width: 0; /* allow flex children to shrink */
+}
+
+.filter-controls .filter-input .pf-v6-c-form-control {
+    width: 100%;
+}
+
+/* VM panel specific tweaks: put the Show selector on its own row and limit the search input width */
+.vm-list-panel .vm-show-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vm-list-panel .vm-show-row .pf-v6-c-form-control {
+    width: auto;
+    min-width: 140px; /* reasonable minimum width for the dropdown */
+}
+
+.vm-list-panel .filter-controls .filter-input .pf-v6-c-form-control {
+    max-width: 110px !important; /* match migrations width */
+    width: 110px !important;
+    height: 26px !important; /* match migrations control height */
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    border-radius: 4px !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Make the Show select visually match the migrations select size */
+.vm-list-panel .vm-show-row .pf-v6-c-form-control {
+    max-width: 110px !important;
+    width: 110px !important;
+    height: 26px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    border-radius: 4px !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
 /* Search controls for VM name filtering */
 .search-controls {
     margin-bottom: 8px;
@@ -2829,4 +2957,66 @@ input:focus {
     font-style: italic;
     padding: 20px;
     font-size: 12px;
+}
+
+/* ------------------------------------------------------------------
+   Active VMs panel - layout fixes
+
+   Purpose: normalize the `.vm-row` layout inside the Active VMs
+   collapsible panel so the action buttons (e.g. "Center") are
+   consistently right-aligned and the resource summary box (.vm-resources)
+   appears as a full-width element below the main row content.
+   This is a narrow, high-specificity override scoped to the
+   active-vms section to avoid disturbing other VM list variants.
+   ------------------------------------------------------------------ */
+.panel-card .pf-v6-c-card__body.collapsible-content[data-section="active-vms"] .vm-row,
+.collapsible-content[data-section="active-vms"] .vm-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    box-sizing: border-box !important;
+}
+
+.panel-card .pf-v6-c-card__body.collapsible-content[data-section="active-vms"] .vm-row .vm-meta,
+.collapsible-content[data-section="active-vms"] .vm-row .vm-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important; /* allow text truncation */
+}
+
+.panel-card .pf-v6-c-card__body.collapsible-content[data-section="active-vms"] .vm-row .vm-actions,
+.collapsible-content[data-section="active-vms"] .vm-row .vm-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 0 0 auto !important;
+    margin-left: 8px !important;
+}
+
+/* Make resources take full width below the main row so they don't
+   visually overlap or offset the action column. */
+.panel-card .pf-v6-c-card__body.collapsible-content[data-section="active-vms"] .vm-row .vm-resources,
+.collapsible-content[data-section="active-vms"] .vm-row .vm-resources {
+    order: 2 !important;
+    flex-basis: 100% !important;
+    width: 100% !important;
+    margin-top: 8px !important;
+    background: #f8f9fa !important;
+    padding: 6px 8px !important;
+    border-left: 3px solid #0066cc !important;
+    border-radius: 4px !important;
+    box-sizing: border-box !important;
+}
+
+/* Ensure primary name/sub text stays on one line and truncates if needed */
+.collapsible-content[data-section="active-vms"] .vm-row .vm-name {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
 }

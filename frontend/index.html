@@ -62,7 +62,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="pf-v6-c-card__body"
+                            <div class="pf-v6-c-card__body">
                                 <div class="filter-section">
                                     <div class="filter-controls">
                                         <div class="filter-group">
@@ -94,68 +94,75 @@
                     <!-- Sidebar panels -->
                     <div class="pf-v6-l-grid__item pf-m-4-col-on-lg pf-m-12-col-on-md">
                         <div class="sidebar-panels">
-                            <!-- Datacenter Overview Panel (right overlay) -->
-                            <div class="pf-v6-c-card panel-card right-overlay" id="datacenter-overview-panel">
-                                <div class="pf-v6-c-card__header collapsible-header" data-target="datacenter-overview">
-                                    <div class="collapsible-title">
-                                        <div class="pf-v6-c-card__header-main">
-                                            <h3 class="pf-v6-c-card__title">Datacenter Overview</h3>
-                                        </div>
-                                        <div class="pf-v6-c-card__actions">
-                                            <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle datacenter overview">
-                                                <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                                            </button>
+                            <!-- Combined Overview Panel: Datacenter Overview + Active VMs -->
+                            <div class="pf-v6-c-card panel-card datacenter-panel" id="overview-panel">
+                                <div class="pf-v6-c-card__header">
+                                    <div class="pf-v6-c-card__header-main">
+                                        <h3 class="pf-v6-c-card__title">Overview</h3>
+                                    </div>
+                                    <div class="pf-v6-c-card__actions">
+                                        <div class="overview-badges">
+                                            <span class="count-badge" id="migration-count-badge">0</span>
+                                            <span class="count-badge" id="vm-count-badge">0</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="pf-v6-c-card__body collapsible-content datacenter-view" id="datacenter-view" data-section="datacenter-overview">
-                                    <!-- Datacenter details will be populated here -->
-                                </div>
-                            </div>
 
-                            <!-- Active VMs Panel (right overlay) -->
-                            <div class="pf-v6-c-card panel-card right-overlay" id="active-vms-panel">
-                                <div class="pf-v6-c-card__header collapsible-header" data-target="active-vms">
-                                    <div class="collapsible-title">
-                                        <div class="pf-v6-c-card__header-main">
-                                            <div class="title-with-count">
-                                                <h3 class="pf-v6-c-card__title">Active VMs</h3>
-                                                <span class="count-badge" id="vm-count-badge">0</span>
+                                <div class="pf-v6-c-card__body">
+                                    <!-- Datacenter Overview Section -->
+                                    <section class="content-section datacenter-section">
+                                        <h4 class="pf-v6-c-title">Datacenter Overview</h4>
+                                        <div class="datacenter-view" id="datacenter-view" data-section="datacenter-overview">
+                                            <!-- Datacenter details populated by app.js -->
+                                        </div>
+                                    </section>
+
+                                    <hr />
+
+                                    <!-- Active VMs Section -->
+                                    <section class="content-section vm-section">
+                                        <div class="vm-list-panel">
+                                            <div class="pf-v6-c-card__header" style="padding:0;margin-bottom:8px;">
+                                                <div class="pf-v6-c-card__header-main">
+                                                    <div class="title-with-count">
+                                                        <h4 class="pf-v6-c-title">Active VMs</h4>
+                                                    </div>
+                                                </div>
+                                                <div class="pf-v6-c-card__actions">
+                                                        <div class="filter-controls" style="margin:0;">
+                                                            <!-- Show selector moved to its own row below the header -->
+                                                        </div>
+                                                </div>
+                                            </div>
+
+                                                <!-- Put Show selector on its own row so it doesn't share the title line -->
+                                                <div class="vm-show-row" style="margin-bottom:8px;">
+                                                    <label class="pf-v6-c-form__label" style="margin:0 8px 0 0;align-self:center;">Show:</label>
+                                                    <select id="vm-filter-mode" class="pf-v6-c-form-control pf-m-small">
+                                                        <option value="all">All VMs</option>
+                                                        <option value="migrating">Only Migrating</option>
+                                                    </select>
+                                                </div>
+
+                                            <div class="filter-section">
+                                                <div class="filter-controls">
+                                                    <div class="filter-group">
+                                                        <div class="pf-v6-c-check">
+                                                            <input type="checkbox" id="vm-hide-inactive" class="pf-v6-c-check__input" checked />
+                                                            <label for="vm-hide-inactive" class="pf-v6-c-check__label">Hide inactive</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="filter-input">
+                                                        <input type="text" id="vm-name-filter" class="pf-v6-c-form-control" placeholder="Filter by VM name..." />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="vm-list-rows" id="vm-list-rows">
+                                                <!-- VM rows populated by app.js -->
                                             </div>
                                         </div>
-                                        <div class="pf-v6-c-card__actions">
-                                            <button class="collapse-toggle pf-v6-c-button pf-m-plain" aria-label="Toggle active VMs">
-                                                <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="pf-v6-c-card__body collapsible-content" data-section="active-vms">
-                                    <div class="filter-section">
-                                        <div class="filter-controls">
-                                            <div class="filter-group">
-                                                <label class="pf-v6-c-form__label">Show:</label>
-                                                <select id="vm-filter-mode" class="pf-v6-c-form-control pf-m-small">
-                                                    <option value="all">All VMs</option>
-                                                    <option value="migrating">Only Migrating</option>
-                                                </select>
-                                            </div>
-                                            <div class="pf-v6-c-check">
-                                                <input type="checkbox" id="vm-hide-inactive" class="pf-v6-c-check__input" checked /> 
-                                                <label for="vm-hide-inactive" class="pf-v6-c-check__label">Hide inactive</label>
-                                            </div>
-                                        </div>
-                                        <div class="search-controls">
-                                            <div class="pf-v6-c-form__group">
-                                                <input type="text" id="vm-name-filter" class="pf-v6-c-form-control" placeholder="Filter by VM name..." />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="content-section">
-                                        <div class="vm-list-rows" id="vm-list-rows">
-                                            <!-- VM rows populated by app.js -->
-                                        </div>
-                                    </div>
+                                    </section>
                                 </div>
                             </div>
                         </div>

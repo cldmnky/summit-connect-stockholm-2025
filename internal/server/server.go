@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -131,6 +132,13 @@ func StartBackendServerWithFS(port int, frontendFS *embed.FS) {
 		return c.JSON(dataStore.GetDatacenters())
 	})
 
+	// Lightweight test endpoint to broadcast a test event via the hub. This
+	// helps debugging SSE delivery from server -> hub -> connected clients.
+	admin.Get("/test-event", func(c *fiber.Ctx) error {
+		watcher.DefaultHub.BroadcastEvent("test:event", map[string]string{"msg": "manual test event"})
+		return c.JSON(fiber.Map{"ok": true, "sent": true})
+	})
+
 	// PATCH /api/v1/admin/datacenters/:id  -> update name/location/coordinates
 	admin.Patch("/datacenters/:id", UpdateDatacenterHandler)
 
@@ -159,6 +167,59 @@ func StartBackendServerWithFS(port int, frontendFS *embed.FS) {
 
 	// Status endpoint
 	api.Get("/status", GetStatusHandler)
+
+	// Server-Sent Events endpoint for watcher events
+	api.Get("/events", func(c *fiber.Ctx) error {
+		// Set SSE headers
+		c.Set("Content-Type", "text/event-stream")
+		c.Set("Cache-Control", "no-cache")
+		c.Set("Connection", "keep-alive")
+
+		// Register with the watcher hub. We must keep the registration
+		// alive for the duration of the stream writer. If we unregister
+		// immediately (via defer here) the channel will be closed before
+		// the stream function runs which causes the connection to end.
+		ch := watcher.DefaultHub.Register()
+
+		// Use low-level stream writer to push events as they arrive. The
+		// Unregister is performed inside the stream writer when it exits
+		// (client disconnected or writer returned an error).
+		c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+			// Ensure we unregister this client when the writer exits.
+			defer watcher.DefaultHub.Unregister(ch)
+
+			// Send an initial hello/ping event through the same writer so
+			// the client receives a valid SSE payload immediately.
+			if _, err := w.WriteString("event: hello\n"); err != nil {
+				return
+			}
+			if _, err := w.WriteString("data: {\"msg\":\"connected\"}\n\n"); err != nil {
+				return
+			}
+			if err := w.Flush(); err != nil {
+				return
+			}
+
+			for msg := range ch {
+				// Write SSE 'message' with JSON payload
+				if _, err := w.WriteString("data: "); err != nil {
+					return
+				}
+				if _, err := w.WriteString(msg); err != nil {
+					return
+				}
+				if _, err := w.WriteString("\n\n"); err != nil {
+					return
+				}
+				if err := w.Flush(); err != nil {
+					return
+				}
+			}
+		})
+
+		// Returning nil lets Fiber consider the response handled by the stream writer
+		return nil
+	})
 
 	// Health check
 	app.Get("/health", func(c *fiber.Ctx) error {
