@@ -16,12 +16,61 @@ class StockholmDatacentersMap {
         this.currentPopupDcId = null; // track which datacenter popup is open
         this.init();
     }
+
+    // Setup observers so panels reposition when their content changes size (expands/collapses)
+    setupRightOverlayObservers() {
+        try {
+            const dcPanel = document.getElementById('datacenter-overview-panel');
+            const vmPanel = document.getElementById('active-vms-panel');
+
+            const resizeCb = () => {
+                // Small throttle to avoid flood
+                if (this._repositionTimeout) clearTimeout(this._repositionTimeout);
+                this._repositionTimeout = setTimeout(() => {
+                    this.adjustMigrationsPanelPosition();
+                }, 80);
+            };
+
+            // Use ResizeObserver if available
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(resizeCb);
+                if (dcPanel) ro.observe(dcPanel);
+                if (vmPanel) ro.observe(vmPanel);
+                // also observe inner bodies if present so expansions inside trigger reposition
+                const dcBody = dcPanel ? dcPanel.querySelector('.pf-v6-c-card__body') : null;
+                const vmBody = vmPanel ? vmPanel.querySelector('.pf-v6-c-card__body') : null;
+                if (dcBody) ro.observe(dcBody);
+                if (vmBody) ro.observe(vmBody);
+                this._rightOverlayResizeObserver = ro;
+            } else {
+                // Fallback: MutationObserver for class changes that may expand/collapse
+                const mo = new MutationObserver(resizeCb);
+                const opts = { attributes: true, childList: true, subtree: true };
+                if (dcPanel) mo.observe(dcPanel, opts);
+                if (vmPanel) mo.observe(vmPanel, opts);
+                const dcBody = dcPanel ? dcPanel.querySelector('.pf-v6-c-card__body') : null;
+                const vmBody = vmPanel ? vmPanel.querySelector('.pf-v6-c-card__body') : null;
+                if (dcBody) mo.observe(dcBody, opts);
+                if (vmBody) mo.observe(vmBody, opts);
+                this._rightOverlayMutationObserver = mo;
+            }
+        } catch (e) {
+            console.warn('setupRightOverlayObservers error', e);
+        }
+    }
     
     async init() {
         await this.loadDatacenters();
         this.initMap();
         this.addDatacenters();
         this.setupControls();
+        // Ensure migration panel is positioned correctly relative to header
+        this.adjustMigrationsPanelPosition();
+        
+        // Initialize count badges
+        this.updateVMCountBadge(0, 0);
+        this.updateMigrationCountBadge(0, 0);
+        
         this.renderGlobalVMList();
         this.renderDatacenterView();
         this.updateStats();
@@ -43,8 +92,188 @@ class StockholmDatacentersMap {
             this.createAllForceGraphs();
         }, 1000);
         
+        // Force style corrections after everything is loaded
+        setTimeout(() => {
+            this.forceCorrectStyling();
+        }, 1500);
+
+        // Recalculate panel position on window resize
+        window.addEventListener('resize', () => {
+            this.adjustMigrationsPanelPosition();
+        });
+
+        // If map exists, adjust on relevant map events
+        if (this.map && this.map.on) {
+            const cb = () => this.adjustMigrationsPanelPosition();
+            this.map.on('zoomend moveend resize', cb);
+        }
+
+        // Set up observers so that when right-side panels expand/collapse we recompute stacking
+        this.setupRightOverlayObservers();
+        
         // periodically refetch data to pick up migrations
         this.startAutoRefresh(5000); // every 5s
+
+        // Setup Server-Sent Events to receive push notifications from the server
+        // If SSE is unavailable the existing polling will continue as a fallback.
+        try {
+            this.setupSSE();
+        } catch (e) {
+            console.warn('SSE setup failed, continuing with polling fallback', e);
+        }
+    }
+
+    // Adjust Active Migrations panel position and max-height so it doesn't overlap header
+    adjustMigrationsPanelPosition() {
+        try {
+            const panel = document.querySelector('.migrations-below-map');
+            if (!panel) return;
+            // Find the visible header (patternfly main section header)
+            const header = document.querySelector('header.pf-v6-c-page__main-section');
+            const headerHeight = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+
+            // Measure Leaflet zoom/control area (prefer explicit zoom control element)
+            let controlsHeight = 0;
+            try {
+                // Prefer the zoom control specifically
+                let zoomEl = document.querySelector('.leaflet-control-zoom');
+                if (!zoomEl) {
+                    // Fallback: measure the grouped top-left controls container
+                    zoomEl = document.querySelector('.leaflet-control-container .leaflet-top.leaflet-left');
+                }
+                if (zoomEl) {
+                    controlsHeight = Math.ceil(zoomEl.getBoundingClientRect().height);
+                }
+            } catch (e) {
+                controlsHeight = 0;
+            }
+
+            // Add a small gap below header and controls
+            const gap = 12;
+            const topPx = headerHeight + controlsHeight + gap;
+
+            // Apply top offset and compute a dynamic maxHeight so the panel fits the viewport
+            panel.style.top = topPx + 'px';
+            // Use the actual migrations panel top as the base for right overlays when available
+            let baseTopForRight = topPx;
+            try {
+                const migrationsPanel = document.querySelector('.migrations-below-map');
+                if (migrationsPanel) {
+                    const rect = migrationsPanel.getBoundingClientRect();
+                    if (rect && typeof rect.top === 'number' && !isNaN(rect.top)) {
+                        // rect.top is relative to the viewport; reuse that value to align visually
+                        baseTopForRight = Math.round(rect.top);
+                    }
+                }
+            } catch (e) {
+                baseTopForRight = topPx;
+            }
+            const bottomGap = 40; // leave room from bottom of viewport
+            const maxH = Math.max(160, window.innerHeight - topPx - bottomGap);
+            panel.style.maxHeight = maxH + 'px';
+
+            // Ensure internal card body can scroll inside the panel
+            const body = panel.querySelector('.pf-v6-c-card__body');
+            if (body) {
+                body.style.maxHeight = (maxH - (headerHeight ? 0 : 48)) + 'px';
+                body.style.overflowY = 'auto';
+                body.style.minHeight = '0';
+            }
+
+            // Also adjust right-side overlays (datacenter overview and active VMs)
+            try {
+                const bottomGap = 40;
+                const remH = window.innerHeight - topPx - bottomGap;
+
+                const dcPanel = document.getElementById('datacenter-overview-panel');
+                const vmPanel = document.getElementById('active-vms-panel');
+
+                // Compute map bounding rect so we position right-overlays over the map area
+                let mapRect = null;
+                try {
+                    const mapEl = document.getElementById('map');
+                    if (mapEl) mapRect = mapEl.getBoundingClientRect();
+                } catch (e) {
+                    mapRect = null;
+                }
+
+                // compute right offset such that overlay sits inside the map's right edge with a margin
+                const defaultRightMargin = 16;
+                let rightOffsetPx = defaultRightMargin;
+                if (mapRect) {
+                    const viewportRightGap = Math.max(0, window.innerWidth - mapRect.right);
+                    rightOffsetPx = Math.max(8, viewportRightGap + defaultRightMargin);
+                }
+
+                // Use measured element heights to stack panels vertically without overlap
+                let currentTop = baseTopForRight;
+                const gapBetween = 12;
+                const rightYOffset = 12; // nudge right overlays slightly down from migrations top
+
+                if (dcPanel) {
+                    dcPanel.style.top = (currentTop + rightYOffset) + 'px';
+                    // anchor horizontally to stay inside map
+                    dcPanel.style.right = rightOffsetPx + 'px';
+                    // compute max height available for dcPanel (but let it expand up to 65% of remaining area)
+                    const dcMax = Math.max(180, Math.floor(remH * 0.65));
+                    dcPanel.style.maxHeight = dcMax + 'px';
+                    const dcBody = dcPanel.querySelector('.pf-v6-c-card__body');
+                    if (dcBody) {
+                        dcBody.style.maxHeight = (dcMax - 48) + 'px';
+                        dcBody.style.overflowY = 'auto';
+                        dcBody.style.minHeight = '0';
+                    }
+                    // compute actual height used (respecting maxHeight)
+                    const used = Math.min(dcPanel.getBoundingClientRect().height || dcMax, dcMax);
+                    currentTop = currentTop + rightYOffset + used + gapBetween;
+                }
+
+                if (vmPanel) {
+                    // place vmPanel at the next available top to avoid overlapping
+                    vmPanel.style.top = currentTop + 'px';
+                    // anchor horizontally to stay inside map
+                    vmPanel.style.right = rightOffsetPx + 'px';
+                    const vmMax = Math.max(160, window.innerHeight - currentTop - bottomGap);
+                    vmPanel.style.maxHeight = vmMax + 'px';
+                    const vmBody = vmPanel.querySelector('.pf-v6-c-card__body');
+                    if (vmBody) {
+                        vmBody.style.maxHeight = (vmMax - 48) + 'px';
+                        vmBody.style.overflowY = 'auto';
+                        vmBody.style.minHeight = '0';
+                    }
+                }
+            } catch (e) {
+                // don't let right-overlay adjustments break everything
+                console.warn('adjust right overlays failed', e);
+            }
+        } catch (e) {
+            console.warn('adjustMigrationsPanelPosition failed', e);
+        }
+    }
+    
+    // Force correct styling with JavaScript
+    forceCorrectStyling() {
+        console.log('[DEBUG] Forcing correct styling...');
+        
+        // Don't force pixel dimensions - let CSS grid handle layout
+        // Just ensure Leaflet map resizes properly
+        if (this.map) {
+            console.log('[DEBUG] Invalidating map size...');
+            setTimeout(() => {
+                this.map.invalidateSize();
+                console.log('[DEBUG] Map size invalidated');
+            }, 100);
+        }
+        
+        // Force remove borders from collapsed panels (but don't override layout)
+        const collapsedContents = document.querySelectorAll('.pf-v6-c-card__body.collapsed');
+        collapsedContents.forEach(content => {
+            content.style.setProperty('border', 'none', 'important');
+            content.style.setProperty('padding', '0', 'important');
+            content.style.setProperty('margin', '0', 'important');
+        });
+        
+        console.log('[DEBUG] Styling corrections applied');
     }
     
     async loadDatacenters() {
@@ -104,6 +333,8 @@ class StockholmDatacentersMap {
     }
     
     initMap() {
+        // (layout-debug removed) Map initialization follows
+
         // Initialize map centered on Stockholm
         this.map = L.map('map').setView([59.3293, 18.0686], 11);
         
@@ -137,6 +368,17 @@ class StockholmDatacentersMap {
         });
         
         console.log('Map initialized at Stockholm coordinates');
+
+        // After initialization, ensure Leaflet recalculates size (help when layout changed)
+        setTimeout(() => {
+            try {
+                this.map.invalidateSize(true);
+            } catch (e) { /* ignore */ }
+            try {
+                const ev = new Event('resize');
+                window.dispatchEvent(ev);
+            } catch (e) {}
+        }, 200);
     }
     
     addDatacenters(fitBounds = true) {
@@ -160,31 +402,8 @@ class StockholmDatacentersMap {
             className: 'datacenter-marker',
             html: `
                 <div class="datacenter-marker-container">
-                    <div class="datacenter-point" style="
-                        width: 16px; 
-                        height: 16px; 
-                        background: #ff6b6b; 
-                        border: 3px solid #fff; 
-                        border-radius: 50%;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                    "></div>
-                    <div class="datacenter-label" style="
-                        position: absolute;
-                        left: 25px;
-                        top: -8px;
-                        background: rgba(21, 21, 21, 0.9);
-                        color: white;
-                        padding: 4px 8px;
-                        border-radius: 4px;
-                        font-size: 12px;
-                        font-weight: 600;
-                        white-space: nowrap;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                        font-family: 'Red Hat Text', Arial, sans-serif;
-                    ">${datacenter.name}</div>
+                    <div class="datacenter-point"></div>
+                    <div class="map-datacenter-label">${datacenter.name}</div>
                 </div>
             `,
             iconSize: [200, 30],
@@ -243,15 +462,22 @@ class StockholmDatacentersMap {
         // Apply configurable filters
         const filterModeEl = document.getElementById('vm-filter-mode');
         const hideInactiveEl = document.getElementById('vm-hide-inactive');
+        const nameFilterEl = document.getElementById('vm-name-filter');
 
         // Load saved preferences if controls aren't present yet
         const savedMode = localStorage.getItem('vmFilterMode');
         const savedHide = localStorage.getItem('vmHideInactive');
+        const savedNameFilter = localStorage.getItem('vmNameFilter');
         if (filterModeEl && savedMode) filterModeEl.value = savedMode;
         if (hideInactiveEl && savedHide !== null) hideInactiveEl.checked = savedHide === 'true';
+        if (nameFilterEl && savedNameFilter !== null) nameFilterEl.value = savedNameFilter;
 
         const mode = (filterModeEl && filterModeEl.value) || savedMode || 'all';
         const hideInactive = (hideInactiveEl && hideInactiveEl.checked) || (savedHide === 'true');
+        const nameFilter = (nameFilterEl && nameFilterEl.value) || savedNameFilter || '';
+
+        // Store total VM count before filtering for badge update
+        const totalVMCount = vms.length;
 
         // If hiding inactive, filter them out
         if (hideInactive) {
@@ -268,6 +494,19 @@ class StockholmDatacentersMap {
         if (mode === 'migrating') {
             vms = vms.filter(vm => vm.migrationStatus === 'migrating' || vm.status === 'migrating' || vm.status === 'waitingforreceiver');
         }
+
+        // Name-based filtering
+        if (nameFilter.trim()) {
+            const filterLower = nameFilter.trim().toLowerCase();
+            vms = vms.filter(vm => {
+                const vmName = (vm.name || vm.id || '').toLowerCase();
+                return vmName.includes(filterLower);
+            });
+        }
+
+        // Update VM count badge
+        this.updateVMCountBadge(vms.length, totalVMCount);
+
         console.log('[DEBUG] renderGlobalVMList called with', vms.length, 'VMs');
 
         // Sort by latest migration timestamp first. If no _lastMigratedAt, keep existing order.
@@ -445,6 +684,18 @@ class StockholmDatacentersMap {
             </div>
         `;
 
+        // Add back button for detailed view
+        if (isSelected) {
+            const backButton = document.createElement('button');
+            backButton.className = 'pf-v6-c-button pf-m-link pf-m-small datacenter-back-btn';
+            backButton.innerHTML = '← Back to Overview';
+            backButton.onclick = () => {
+                this.renderDatacenterView(); // Go back to overview
+                this.currentPopupDcId = null; // Clear selected datacenter
+            };
+            card.insertBefore(backButton, card.firstChild);
+        }
+
         if (isSelected && clusters.length > 0) {
             const clustersSection = document.createElement('div');
             clustersSection.className = 'clusters-section';
@@ -618,6 +869,94 @@ class StockholmDatacentersMap {
     startAutoRefresh(intervalMs = 10000) {
         // store interval id so it could be cleared later if needed
         this._autoRefreshInterval = setInterval(() => this.fetchAndMergeDatacenters(), intervalMs);
+    }
+
+    // Setup Server-Sent Events connection to receive push notifications.
+    // If connected, we will temporarily stop the periodic polling to avoid duplicate work.
+    setupSSE() {
+        // configurable endpoint
+        this._sseUrl = '/api/v1/events';
+        this._sseBackoff = 1000; // initial backoff ms
+        this._sseMaxBackoff = 30000;
+        this._sseEnabled = true;
+        this._sseConnected = false;
+        this._sseSource = null;
+        this.connectSSE();
+    }
+
+    connectSSE() {
+        if (!this._sseEnabled) return;
+        try {
+            const es = new EventSource(this._sseUrl);
+            this._sseSource = es;
+
+            es.onopen = () => {
+                console.log('[SSE] connected');
+                this._sseConnected = true;
+                // Stop polling while SSE is active to reduce duplicate fetches
+                if (this._autoRefreshInterval) {
+                    clearInterval(this._autoRefreshInterval);
+                    this._autoRefreshInterval = null;
+                }
+                // Reset backoff
+                this._sseBackoff = 1000;
+                // Do an immediate fetch to ensure we're synced
+                this.fetchAndMergeDatacenters();
+            };
+
+            es.onmessage = (e) => {
+                try {
+                    const msg = JSON.parse(e.data);
+                    // For simplicity: on any VM/migration event ask client to refresh
+                    if (msg && msg.type) {
+                        const t = msg.type;
+                        if (t.startsWith('vm:') || t.startsWith('migration:') || t === 'datacenters:updated' || t === 'refresh') {
+                            console.log('[SSE] event received, refreshing data:', t);
+                            this.fetchAndMergeDatacenters();
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[SSE] invalid event payload', err, e.data);
+                }
+            };
+
+            es.onerror = (err) => {
+                console.warn('[SSE] error or disconnected', err);
+                // If closed, mark disconnected and try reconnect with backoff
+                if (this._sseSource) {
+                    try { this._sseSource.close(); } catch (e) {}
+                }
+                this._sseConnected = false;
+                this._sseSource = null;
+
+                // Resume polling as fallback if not already
+                if (!this._autoRefreshInterval) {
+                    this.startAutoRefresh(15000); // slower fallback polling
+                }
+
+                // Reconnect with exponential backoff
+                const backoff = this._sseBackoff || 1000;
+                setTimeout(() => {
+                    this._sseBackoff = Math.min((this._sseBackoff || 1000) * 1.6, this._sseMaxBackoff);
+                    this.connectSSE();
+                }, backoff + Math.floor(Math.random() * 400));
+            };
+        } catch (e) {
+            console.warn('[SSE] setup failed', e);
+            // Ensure polling fallback
+            if (!this._autoRefreshInterval) this.startAutoRefresh(15000);
+        }
+    }
+
+    stopSSE() {
+        this._sseEnabled = false;
+        if (this._sseSource) {
+            try { this._sseSource.close(); } catch (e) {}
+            this._sseSource = null;
+        }
+        this._sseConnected = false;
+        // Ensure polling is running
+        if (!this._autoRefreshInterval) this.startAutoRefresh(15000);
     }
 
     async fetchAndMergeDatacenters() {
@@ -1886,9 +2225,9 @@ class StockholmDatacentersMap {
         const demoBtn = document.getElementById('demo-migrate');
         const testForceBtn = document.getElementById('test-force-graphs');
 
-        // apply Bulma button classes
+        // apply PatternFly button classes
         [toggleBtn, centerBtn, triggerBtn, demoBtn, testForceBtn].forEach(b => {
-            if (b) b.classList.add('button', 'is-small');
+            if (b) b.classList.add('pf-v6-c-button', 'pf-m-small');
         });
 
         toggleBtn.addEventListener('click', () => {
@@ -1909,6 +2248,8 @@ class StockholmDatacentersMap {
         // VM list filter controls
         const vmFilterMode = document.getElementById('vm-filter-mode');
         const vmHideInactive = document.getElementById('vm-hide-inactive');
+        const vmNameFilter = document.getElementById('vm-name-filter');
+        
         if (vmFilterMode) {
             vmFilterMode.addEventListener('change', () => {
                 localStorage.setItem('vmFilterMode', vmFilterMode.value);
@@ -1921,9 +2262,32 @@ class StockholmDatacentersMap {
                 this.renderGlobalVMList();
             });
         }
+        if (vmNameFilter) {
+            // Add debounced input event listener for better performance
+            let debounceTimer;
+            vmNameFilter.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    localStorage.setItem('vmNameFilter', vmNameFilter.value);
+                    this.renderGlobalVMList();
+                }, 300); // 300ms delay
+            });
+            
+            // Also handle Enter key for immediate search
+            vmNameFilter.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    clearTimeout(debounceTimer);
+                    localStorage.setItem('vmNameFilter', vmNameFilter.value);
+                    this.renderGlobalVMList();
+                }
+            });
+        }
 
         // Migration controls
         this.setupMigrationControls();
+
+        // Collapsible sidebar panels
+        this.setupCollapsiblePanels();
 
         // Add test function to window for demo purposes
         const self = this;
@@ -2090,8 +2454,11 @@ class StockholmDatacentersMap {
         
         console.log('Total VMs calculated:', totalVMs, 'Active datacenters:', activeDatacenters);
         
-        document.getElementById('total-vms').textContent = totalVMs;
-        document.getElementById('active-datacenters').textContent = activeDatacenters;
+        // Update stats display if elements exist (stats overlay was removed)
+        const totalVMsElement = document.getElementById('total-vms');
+        const activeDatacentersElement = document.getElementById('active-datacenters');
+        if (totalVMsElement) totalVMsElement.textContent = totalVMs;
+        if (activeDatacentersElement) activeDatacentersElement.textContent = activeDatacenters;
 
         // refresh global VM list since counts may have changed
         this.renderGlobalVMList();
@@ -2202,6 +2569,43 @@ class StockholmDatacentersMap {
         }).join('');
 
         migrationContainer.innerHTML = migrationRows;
+
+        // Update migration count badge
+        this.updateMigrationCountBadge(filteredMigrations.length, this.migrations.length);
+    }
+
+    updateVMCountBadge(displayedCount, totalCount) {
+        const badge = document.getElementById('vm-count-badge');
+        if (badge) {
+            badge.textContent = displayedCount;
+            badge.setAttribute('data-count', displayedCount);
+            badge.title = `Showing ${displayedCount} VMs`;
+            
+            // Update badge color based on filter status
+            if (displayedCount < totalCount) {
+                badge.style.background = 'var(--pf-v6-global--warning-color--100)';
+                badge.title = `Showing ${displayedCount} of ${totalCount} VMs (filtered)`;
+            } else {
+                badge.style.background = 'var(--pf-v6-global--primary-color--100)';
+            }
+        }
+    }
+
+    updateMigrationCountBadge(displayedCount, totalCount) {
+        const badge = document.getElementById('migration-count-badge');
+        if (badge) {
+            badge.textContent = displayedCount;
+            badge.setAttribute('data-count', displayedCount);
+            badge.title = `Showing ${displayedCount} migrations`;
+            
+            // Update badge color based on filter status
+            if (displayedCount < totalCount) {
+                badge.style.background = 'var(--pf-v6-global--warning-color--100)';
+                badge.title = `Showing ${displayedCount} of ${totalCount} migrations (filtered)`;
+            } else {
+                badge.style.background = 'var(--pf-v6-global--primary-color--100)';
+            }
+        }
     }
 
     calculateMigrationDuration(migration) {
@@ -2286,17 +2690,127 @@ class StockholmDatacentersMap {
         const refreshBtn = document.getElementById('refresh-migrations');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', async () => {
-                refreshBtn.textContent = 'Loading...';
+                // Store original content to restore later
+                const originalHTML = refreshBtn.innerHTML;
+                
+                // Show loading state while preserving icon
+                const icon = refreshBtn.querySelector('i');
+                if (icon) {
+                    icon.className = 'fas fa-spinner fa-spin';
+                }
+                refreshBtn.classList.add('refreshing');
                 refreshBtn.disabled = true;
                 
-                await this.loadMigrations();
-                this.renderMigrationList();
-                await this.updateMigrationOverlays();
+                try {
+                    await this.loadMigrations();
+                    this.renderMigrationList();
+                    await this.updateMigrationOverlays();
+                } catch (error) {
+                    console.error('Error refreshing migrations:', error);
+                }
                 
-                refreshBtn.textContent = 'Refresh';
+                // Restore original state
+                refreshBtn.innerHTML = originalHTML;
+                refreshBtn.classList.remove('refreshing');
                 refreshBtn.disabled = false;
             });
         }
+    }
+
+    setupCollapsiblePanels() {
+        console.log('[DEBUG] Setting up collapsible panels...');
+        
+        // Get all collapsible headers
+        const collapsibleHeaders = document.querySelectorAll('.collapsible-header');
+        console.log(`[DEBUG] Found ${collapsibleHeaders.length} collapsible headers`);
+        
+        // Load saved collapse states from localStorage
+        const savedStates = JSON.parse(localStorage.getItem('collapsiblePanelStates') || '{}');
+        console.log('[DEBUG] Saved states:', savedStates);
+        
+        collapsibleHeaders.forEach((header, index) => {
+            const target = header.getAttribute('data-target');
+            const content = document.querySelector(`[data-section="${target}"]`);
+            const toggle = header.querySelector('.collapse-toggle');
+            
+            console.log(`[DEBUG] Panel ${index}: target="${target}", content=${!!content}, toggle=${!!toggle}`);
+            
+            if (!content || !toggle) {
+                console.warn(`[DEBUG] Missing elements for panel ${target}:`, { content: !!content, toggle: !!toggle });
+                return;
+            }
+            
+            // Apply saved state or default behavior:
+            // - datacenter-overview: expanded by default (for backward compatibility)
+            // - other panels: can be collapsed
+            const defaultCollapsed = target !== 'datacenter-overview' ? false : false; // All expanded by default
+            const isCollapsed = savedStates.hasOwnProperty(target) ? savedStates[target] : defaultCollapsed;
+            
+            if (isCollapsed) {
+                header.classList.add('collapsed');
+                content.classList.add('collapsed');
+                // Apply collapsed styling - completely hide
+                content.style.setProperty('border', 'none', 'important');
+                content.style.setProperty('padding', '0', 'important');
+                content.style.setProperty('margin', '0', 'important');
+                content.style.setProperty('opacity', '0', 'important');
+                content.style.setProperty('visibility', 'hidden', 'important');
+                content.style.setProperty('box-shadow', 'none', 'important');
+            }
+            
+            // Add click handler
+            console.log(`[DEBUG] Adding click handler to panel ${target}`);
+            header.addEventListener('click', (e) => {
+                console.log(`[DEBUG] Panel ${target} clicked!`);
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const isCurrentlyCollapsed = header.classList.contains('collapsed');
+                console.log(`[DEBUG] Panel ${target} isCurrentlyCollapsed: ${isCurrentlyCollapsed}`);
+                
+                if (isCurrentlyCollapsed) {
+                    // Expand
+                    console.log(`[DEBUG] Expanding panel ${target}`);
+                    header.classList.remove('collapsed');
+                    content.classList.remove('collapsed');
+                    savedStates[target] = false;
+                    // Restore content properties when expanded - remove only the forced collapsed styles
+                    content.style.removeProperty('border');
+                    content.style.removeProperty('padding');
+                    content.style.removeProperty('margin');
+                    
+                    // Special handling for Active VMs panel - preserve height constraints
+                    if (target === 'active-vms') {
+                        // Don't remove max-height and overflow for Active VMs to prevent overlap
+                        console.log(`[DEBUG] Preserving height constraints for ${target}`);
+                    } else {
+                        content.style.removeProperty('max-height');
+                        content.style.removeProperty('overflow');
+                    }
+                    
+                    content.style.removeProperty('opacity');
+                    content.style.removeProperty('visibility');
+                    content.style.removeProperty('box-shadow');
+                    content.style.removeProperty('background');
+                } else {
+                    // Collapse
+                    console.log(`[DEBUG] Collapsing panel ${target}`);
+                    header.classList.add('collapsed');
+                    content.classList.add('collapsed');
+                    savedStates[target] = true;
+                    // Apply collapsed styling - completely hide
+                    content.style.setProperty('border', 'none', 'important');
+                    content.style.setProperty('padding', '0', 'important');
+                    content.style.setProperty('margin', '0', 'important');
+                    content.style.setProperty('opacity', '0', 'important');
+                    content.style.setProperty('visibility', 'hidden', 'important');
+                    content.style.setProperty('box-shadow', 'none', 'important');
+                }
+                
+                // Save state to localStorage
+                localStorage.setItem('collapsiblePanelStates', JSON.stringify(savedStates));
+            });
+        });
     }
 
 }
@@ -2338,7 +2852,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.addEventListener('resize', () => {
             if (resizeTimer) clearTimeout(resizeTimer);
             // wait until resize stops (200ms) before recalculating map overlays
-            resizeTimer = setTimeout(onResizeDone, 200);
+            resizeTimer = setTimeout(() => {
+                onResizeDone();
+                // Also force correct styling on resize
+                if (window.app && window.app.forceCorrectStyling) {
+                    window.app.forceCorrectStyling();
+                }
+            }, 200);
         });
     })();
 });

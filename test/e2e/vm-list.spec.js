@@ -34,8 +34,7 @@ test.describe('VM list rendering', () => {
     // After clicking center, the map container should still exist
     await expect(page.locator('#map')).toBeVisible();
 
-    // Ensure stats updated (total-vms element contains a number)
-    const totalVmsText = await page.textContent('#total-vms');
-    expect(totalVmsText).toMatch(/\d+/);
+    // Ensure the VM list is functioning (check for VM rows)
+    await expect(page.locator('.vm-list-rows')).toBeVisible();
   });
 });

@@ -1,103 +1,808 @@
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    /* Smooth transitions for better UX */
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
 body {
-    font-family: 'Red Hat Text', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f5f5f5;
+    font-family: 'RedHatText', 'Red Hat Text', 'Red Hat Display', 'Overpass', overpass, helvetica, arial, sans-serif;
+    background: var(--pf-v6-global--BackgroundColor--100, #f0f0f0);
     min-height: 100vh;
-    color: #151515;
+    color: var(--pf-v6-global--Color--100, #151515);
     margin: 0;
     padding: 0;
+    font-size: 14px;
+    line-height: 1.5;
 }
 
-/* App-specific container to avoid Bulma .container breakpoint limits */
-.app-container {
-    width: 100%;
-    max-width: min(2600px, 98vw); /* use nearly full viewport on very wide monitors */
-    margin: 0 auto; /* center on wide screens */
-    padding: 18px 28px;
-    background: #ffffff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    min-height: 100vh; /* allow content to grow if needed */
-    overflow: visible; /* let child panels handle overflow */
-    transition: max-width 240ms ease, padding 240ms ease;
-}
-
-/* Add Red Hat-style header */
-.app-header {
-    background: #151515;
-    color: white;
-    padding: 12px 24px;
+/* OpenShift-style page layout */
+.pf-v6-c-page {
+    height: 100vh;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid #292929;
+    flex-direction: column;
+    background: var(--pf-v6-global--BackgroundColor--100);
 }
 
-.app-header .logo {
+.pf-v6-c-page__main-section {
+    padding: var(--pf-v6-global--spacer--lg, 24px);
+}
+
+.pf-v6-c-page__main-section.pf-m-fill {
+    flex: 1;
     display: flex;
-    align-items: center;
-    gap: 12px;
-    font-weight: 600;
-    font-size: 16px;
+    flex-direction: column;
 }
 
-.app-header .logo::before {
-    content: "🏢";
-    font-size: 20px;
+main.pf-v6-c-page__main-section {
+    flex: 1 !important;
+    min-height: calc(100vh - 120px) !important;
+    height: calc(100vh - 120px) !important;
+    padding: 24px;
 }
 
-header {
-    text-align: left;
-    margin: 16px 20px 12px 20px;
-    color: #151515;
-    background: transparent;
+/* OpenShift-style layout grid - FORCE FULL HEIGHT */
+.openshift-layout {
+    /* Use a two-column flex layout so the map and sidebar sit side-by-side */
+    display: flex !important;
+    gap: var(--pf-t--global--spacer--xl, 24px) !important;
+    align-items: stretch !important;
+    position: relative !important;
+    height: calc(100vh - 120px) !important; /* Adjusted to account for minimal visible header */
+    min-height: 600px !important;
+    overflow: hidden !important;
 }
 
-header h1 {
-    font-size: 24px;
-    margin-bottom: 4px;
-    text-shadow: none;
+/* Map column participates in flow (not absolutely positioned) so the sidebar can sit to its right */
+.openshift-layout .pf-v6-l-grid__item:first-child {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: auto !important;
+    height: 100% !important;
+    flex: 1 1 auto !important; /* let map grow */
+    z-index: 1 !important;
+}
+
+/* Sidebar overlays on top right */
+.openshift-layout .pf-v6-l-grid__item:last-child {
+    position: absolute !important;
+    top: var(--pf-v6-global--spacer--md, 16px) !important;
+    right: var(--pf-v6-global--spacer--md, 16px) !important;
+    width: 320px !important;
+    max-height: calc(100% - 32px) !important;
+    z-index: 1000 !important;
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    border-radius: var(--pf-v6-global--BorderRadius--lg, 8px) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+    overflow-y: auto !important;
+}
+
+.openshift-layout .pf-v6-l-grid__item {
+    display: flex;
+    flex-direction: column;
+    min-width: 0 !important; /* Prevent flex items from overflowing */
+}
+
+/* Main content area - force width regardless of breakpoints */
+.openshift-layout .pf-v6-l-grid__item.pf-m-8-col-on-lg {
+    min-height: 600px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--pf-v6-global--spacer--md, 16px) !important;
+    flex: 1 !important; /* Take remaining space */
+    width: auto !important;
+    max-width: none !important;
+    order: 1 !important;
+}
+
+/* Minimized header for more map space */
+header.pf-v6-c-page__main-section {
+    background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100);
+    box-shadow: 0 1px 4px rgba(3, 3, 3, 0.12), 0 0 8px rgba(3, 3, 3, 0.06);
+    margin-bottom: 0;
+    padding: 16px 24px; /* Slightly increased to ensure visibility */
+    min-height: auto; /* Allow minimal height */
+    display: block !important; /* Ensure header is visible */
+    position: relative;
+    z-index: 10;
+}
+
+/* Ensure page header content (title/subtitle) is visible above overlays */
+.pf-v6-c-page__main-section .pf-v6-c-content {
+    display: block !important;
+}
+
+/* Datacenter map label centralized class for better visibility */
+.map-datacenter-label {
+    position: absolute;
+    left: 22px;
+    top: -12px;
+    color: #ffffff;
+    background: rgba(17, 24, 39, 0.9); /* near-black with slight transparency */
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+    pointer-events: none; /* labels shouldn't capture clicks */
+    transform: translateY(-2px);
+}
+
+.map-datacenter-label::after {
+    /* small caret pointing to the pin */
+    content: '';
+    position: absolute;
+    left: 8px;
+    bottom: -6px;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid rgba(17,24,39,0.9);
+    pointer-events: none;
+}
+
+/* Ensure the small pin uses consistent sizing (matches earlier inline values) */
+.datacenter-point {
+    width: 16px;
+    height: 16px;
+    background: #ff6b6b;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    position: absolute;
+    left: 0;
+    top: 0;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.datacenter-marker:hover .datacenter-point {
+    transform: scale(1.15);
+}
+
+/* Sidebar column positioning - force fixed width */
+.openshift-layout .pf-v6-l-grid__item.pf-m-4-col-on-lg {
+    flex: 0 0 320px !important; /* Fixed width sidebar */
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
+    z-index: 100 !important;
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff);
+    order: 2 !important;
+    display: block !important;
+}
+
+.sidebar-panels {
+    height: 100% !important;
+    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--pf-v6-global--spacer--sm, 8px) !important; /* Reduced gap for cleaner spacing */
+}
+
+header .pf-v6-c-title {
+    margin-bottom: 0; /* Remove bottom margin */
+    color: var(--pf-v6-global--Color--100, #151515);
     font-weight: 500;
-    color: #151515;
+    font-size: 20px; /* Slightly larger to ensure visibility */
+    line-height: 1.3;
+    display: block !important; /* Ensure title is visible */
 }
 
-header p {
-    font-size: 13px;
-    opacity: 0.7;
-    color: #6a6e73;
+header .pf-v6-c-content {
+    display: none; /* Hide subtitle to minimize header */
+    color: var(--pf-v6-global--Color--200, #6a6e73);
+    font-size: 14px;
+    margin: 0;
 }
 
-main {
-    padding: 0 8px 16px 8px;
-    background: #ffffff;
-    /* Use flexible columns on wide screens so the map can expand */
+/* OpenShift-style Cards */
+.pf-v6-c-card {
+    background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
+    border: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+    border-radius: var(--pf-v6-global--BorderRadius--lg, 8px);
+    box-shadow: 0 1px 4px rgba(3, 3, 3, 0.12), 0 0 8px rgba(3, 3, 3, 0.06);
+    overflow: hidden;
+}
+
+.pf-v6-c-card__header {
+    padding: var(--pf-v6-global--spacer--md, 16px) var(--pf-v6-global--spacer--lg, 24px);
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+    background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
+    min-height: auto;
+}
+
+.pf-v6-c-card__header-main {
+    display: flex;
+    align-items: center;
+    gap: var(--pf-v6-global--spacer--sm, 8px);
+    flex: 1;
+}
+
+.pf-v6-c-card__title {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--pf-v6-global--Color--100, #151515);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.pf-v6-c-card__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--pf-v6-global--spacer--sm, 8px);
+}
+
+.pf-v6-c-card__body {
+    padding: var(--pf-v6-global--spacer--lg, 24px);
+}
+
+/* Sidebar panel specific body padding - improved spacing */
+.panel-card .pf-v6-c-card__body {
+    padding: var(--pf-v6-global--spacer--lg, 24px);
+}
+
+/* Ensure proper spacing in filter sections */
+.filter-section {
+    margin-bottom: var(--pf-v6-global--spacer--lg, 24px);
+    padding: 0 !important; /* Remove extra padding from filter sections */
+}
+
+/* Content sections need proper spacing */
+.content-section {
+    margin-top: var(--pf-v6-global--spacer--md, 16px);
+}
+
+/* Map container styling - FULL VIEWPORT */
+.pf-v6-c-card.map-container {
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    max-width: none !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
+}
+
+.map-container .pf-v6-c-card__title {
+    display: none !important; /* Hide title for full map immersion */
+}
+
+.map-container .pf-v6-c-card__body {
+    flex: 1 !important;
+    position: relative;
+    padding: 0;
+    overflow: hidden !important;
+    min-height: 0 !important;
+}
+
+#map {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    min-height: 500px !important;
+    z-index: 1 !important;
+}
+
+/* Sidebar panels container */
+.sidebar-panels {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pf-v6-global--spacer--lg, 24px);
+    height: 100%;
+}
+
+.panel-card {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0; /* Remove margin since we use flexbox gap */
+    box-shadow: 0 1px 4px rgba(3, 3, 3, 0.12), 0 0 8px rgba(3, 3, 3, 0.06);
+}
+
+.panel-card:not(:last-child) {
+    flex: 0 0 auto;
+}
+
+/* Special constraint for Active VMs panel card */
+.panel-card:nth-child(2) {
+    flex: 0 0 auto;
+    max-height: 500px; /* Constrain entire card height */
+    overflow: hidden;
+}
+
+.panel-card:last-child {
+    flex: 1;
+    min-height: 0;
+    margin-bottom: 0; /* Remove bottom margin from last card */
+}
+
+/* Improve panel header spacing */
+.panel-card .pf-v6-c-card__header {
+    padding: var(--pf-v6-global--spacer--lg, 24px);
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+    background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
+}
+
+/* OpenShift-style form elements */
+.pf-v6-c-form__label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--pf-v6-global--Color--100, #151515);
+    margin-bottom: var(--pf-v6-global--spacer--xs, 4px);
     display: block;
 }
 
-.map-container {
-    background: #ffffff;
-    border-radius: 8px;
-    padding: 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border: 1px solid #d2d2d2;
-    position: relative;
-    overflow: hidden;
-    /* allow the map container to grow within a flex column; use max-height to avoid viewport overflow */
-    max-height: calc(100vh - 160px);
-    height: 100%;
+.pf-v6-c-form-control {
+    font-size: 14px;
+    padding: 8px 12px;
+    border: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+    border-radius: var(--pf-v6-global--BorderRadius--sm, 4px);
+    background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
+    color: var(--pf-v6-global--Color--100, #151515);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Make map larger and fill available space */
-#map {
+.pf-v6-c-form-control:focus {
+    outline: none;
+    border-color: var(--pf-v6-global--primary-color--100, #0066cc);
+    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.25);
+}
+
+.pf-v6-c-form-control::placeholder {
+    color: var(--pf-v6-global--Color--200, #6a6e73);
+    opacity: 1;
+}
+
+/* Check boxes */
+.pf-v6-c-check {
+    display: flex;
+    align-items: center;
+    gap: var(--pf-v6-global--spacer--xs, 4px);
+}
+
+.pf-v6-c-check__input {
+    margin: 0;
+}
+
+.pf-v6-c-check__label {
+    font-size: 14px;
+    color: var(--pf-v6-global--Color--100, #151515);
+    margin: 0;
+    cursor: pointer;
+}
+
+/* OpenShift-style Badges */
+.pf-v6-c-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+    border-radius: 12px;
+    min-width: 24px;
+    text-align: center;
+    background: var(--pf-v6-global--BackgroundColor--dark-200, #f0f0f0);
+    color: var(--pf-v6-global--Color--100, #151515);
+    border: 1px solid var(--pf-v6-global--BorderColor--200, #c7c7c7);
+}
+
+.pf-v6-c-badge--read {
+    background: var(--pf-v6-global--palette--blue-50, #e7f3ff);
+    color: var(--pf-v6-global--palette--blue-400, #0066cc);
+    border-color: var(--pf-v6-global--palette--blue-200, #bee1f4);
+}
+
+/* OpenShift-style Lists */
+.pf-v6-c-data-list {
+    background: transparent;
+    border: none;
+}
+
+.pf-v6-c-data-list__item {
+    background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
+    border: none;
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+    padding: var(--pf-v6-global--spacer--sm, 8px) var(--pf-v6-global--spacer--md, 16px);
+    transition: background-color 0.2s ease;
+}
+
+.pf-v6-c-data-list__item:hover {
+    background: var(--pf-v6-global--BackgroundColor--light-200, #f5f5f5);
+    cursor: pointer;
+}
+
+.pf-v6-c-data-list__item:last-child {
+    border-bottom: none;
+}
+
+.pf-v6-c-data-list__cell {
+    padding: 0;
+    font-size: 14px;
+    color: var(--pf-v6-global--Color--100, #151515);
+    line-height: 1.5;
+}
+
+.pf-v6-c-data-list__cell:not(:last-child) {
+    padding-right: var(--pf-v6-global--spacer--md, 16px);
+}
+
+/* VM List and Migration List specific styling */
+.vm-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+    border-radius: var(--pf-v6-global--BorderRadius--sm, 4px);
+    background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
+}
+
+.vm-list:empty::before {
+    content: "No VMs found";
+    display: block;
+    text-align: center;
+    color: var(--pf-v6-global--Color--200, #6a6e73);
+    font-style: italic;
+    padding: var(--pf-v6-global--spacer--lg, 24px);
+}
+
+.migration-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+    border-radius: var(--pf-v6-global--BorderRadius--sm, 4px);
+    background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
+}
+
+/* COMPLETELY hide collapsed content */
+.pf-v6-c-card.panel-card .collapsible-content[hidden],
+.pf-v6-c-card.panel-card .collapsible-content.collapsed,
+.collapsible-content[hidden],
+.collapsible-content.collapsed {
+    max-height: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    background: none !important;
+    box-shadow: none !important;
+    transition: max-height 0.3s ease-out, padding 0.3s ease-out !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+/* ONLY hide child element borders/backgrounds in collapsed panels - NOT all styling */
+.collapsible-content[hidden] > *,
+.collapsible-content.collapsed > * {
+    border: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    box-shadow: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    /* Don't remove background/styling completely - just hide borders */
+}
+
+.collapsible-content[hidden] .vm-list,
+.collapsible-content[hidden] .migration-list,
+.collapsible-content.collapsed .vm-list,
+.collapsible-content.collapsed .migration-list {
+    border: none !important;
+    background: transparent !important;
+}
+
+.migration-list:empty::before {
+    content: "No active migrations";
+    display: block;
+    text-align: center;
+    color: var(--pf-v6-global--Color--200, #6a6e73);
+    font-style: italic;
+    padding: var(--pf-v6-global--spacer--lg, 24px);
+}
+
+/* Scrollbar styling for lists */
+.vm-list::-webkit-scrollbar,
+.migration-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.vm-list::-webkit-scrollbar-track,
+.migration-list::-webkit-scrollbar-track {
+    background: var(--pf-v6-global--BackgroundColor--light-200, #f5f5f5);
+}
+
+.vm-list::-webkit-scrollbar-thumb,
+.migration-list::-webkit-scrollbar-thumb {
+    background: var(--pf-v6-global--BorderColor--200, #c7c7c7);
+    border-radius: 3px;
+}
+
+.vm-list::-webkit-scrollbar-thumb:hover,
+.migration-list::-webkit-scrollbar-thumb:hover {
+    background: var(--pf-v6-global--BorderColor--300, #a3a3a3);
+}
+
+/* Scrollbar styling for migrations below map */
+.migrations-below-map .migration-list-rows::-webkit-scrollbar {
+    width: 8px;
+}
+
+.migrations-below-map .migration-list-rows::-webkit-scrollbar-track {
+    background: var(--pf-v6-global--BackgroundColor--200, #f5f5f5);
+    border-radius: 4px;
+}
+
+.migrations-below-map .migration-list-rows::-webkit-scrollbar-thumb {
+    background: var(--pf-v6-global--BorderColor--200, #c7c7c7);
+    border-radius: 4px;
+}
+
+.migrations-below-map .migration-list-rows::-webkit-scrollbar-thumb:hover {
+    background: var(--pf-v6-global--BorderColor--300, #a3a3a3);
+}
+
+/* OpenShift-style Expandable Sections */
+.pf-v6-c-expandable-section {
+    border: none;
+    background: transparent;
+}
+
+.pf-v6-c-expandable-section__toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--pf-v6-global--spacer--sm, 8px);
     width: 100%;
-    /* Fill the map-container's height rather than forcing absolute viewport calc */
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+}
+
+.pf-v6-c-expandable-section__toggle:hover {
+    background: transparent;
+}
+
+.pf-v6-c-expandable-section__toggle-icon {
+    font-size: 14px;
+    color: var(--pf-v6-global--Color--200, #6a6e73);
+    transition: transform 0.2s ease;
+    width: 16px;
+    text-align: center;
+}
+
+.pf-v6-c-expandable-section__toggle[aria-expanded="true"] .pf-v6-c-expandable-section__toggle-icon {
+    transform: rotate(90deg);
+}
+
+.pf-v6-c-expandable-section__toggle-text {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--pf-v6-global--Color--100, #151515);
+    flex: 1;
+}
+
+.pf-v6-c-expandable-section__content {
+    padding-top: var(--pf-v6-global--spacer--md, 16px);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.pf-v6-c-expandable-section__content[hidden] {
+    display: none;
+}
+
+/* Datacenter list styling */
+.datacenter-list .pf-v6-c-data-list__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.datacenter-list .pf-v6-c-data-list__item:hover {
+    background: var(--pf-v6-global--active-color--100, #e6f3ff);
+}
+
+.datacenter-list .pf-v6-c-data-list__item.selected {
+    background: var(--pf-v6-global--active-color--200, #cce7ff);
+    border-left: 3px solid var(--pf-v6-global--primary-color--100, #0066cc);
+}
+
+.datacenter-name {
+    font-weight: 500;
+    color: var(--pf-v6-global--Color--100, #151515);
+}
+
+.datacenter-count {
+    font-size: 12px;
+    color: var(--pf-v6-global--Color--200, #6a6e73);
+}
+
+/* Navigation breadcrumb styling */
+.navigation-breadcrumb {
+    padding: var(--pf-v6-global--spacer--sm, 8px) var(--pf-v6-global--spacer--md, 16px);
+    background: var(--pf-v6-global--BackgroundColor--light-200, #f5f5f5);
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+    font-size: 14px;
+}
+
+.breadcrumb-link {
+    color: var(--pf-v6-global--link--Color, #0066cc);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-separator {
+    margin: 0 var(--pf-v6-global--spacer--xs, 4px);
+    color: var(--pf-v6-global--Color--200, #6a6e73);
+}
+
+/* Mobile responsive adjustments - stack overlays */
+@media (max-width: 768px) {
+    .openshift-layout .pf-v6-l-grid__item:last-child {
+        position: fixed !important;
+        top: auto !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-height: 50vh !important;
+        border-radius: var(--pf-v6-global--BorderRadius--lg, 8px) var(--pf-v6-global--BorderRadius--lg, 8px) 0 0 !important;
+    }
+    
+    .migrations-below-map {
+        position: fixed !important;
+        top: 140px !important; /* Match desktop positioning to avoid header overlap */
+        left: 8px !important;
+        right: 8px !important;
+        width: auto !important; /* Auto width with left/right margins on mobile */
+        max-height: 60vh !important; /* Limit height on mobile for better usability */
+        border-radius: var(--pf-v6-global--BorderRadius--lg, 8px) !important;
+    }
+}
+
+/* Custom marker styling for consistency */
+.datacenter-marker {
+    /* divIcon outer container should be transparent and size-auto so it doesn't form an ellipse */
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    transition: none !important;
+}
+
+/* The visible circular pin lives inside the container as .datacenter-point */
+.datacenter-marker .datacenter-point {
+    width: 20px;
+    height: 20px;
+    background-color: #ff6b6b; /* red pin */
+    border: 3px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    position: absolute;
+    left: 0;
+    top: 0;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.datacenter-marker:hover .datacenter-point {
+    transform: scale(1.15);
+    background-color: #ff4f4f;
+}
+
+.datacenter-marker.selected .datacenter-point {
+    background-color: var(--pf-v6-global--warning-color--100, #f0ab00);
+    border-color: var(--pf-v6-global--warning-color--200, #c58c00);
+}
+
+/* Map popup styling */
+.leaflet-popup-content-wrapper {
+    background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
+    border: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+    border-radius: var(--pf-v6-global--BorderRadius--sm, 4px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    font-family: var(--pf-v6-global--FontFamily--text);
+}
+
+.leaflet-popup-content {
+    font-size: 14px;
+    color: var(--pf-v6-global--Color--100, #151515);
+    margin: var(--pf-v6-global--spacer--sm, 8px);
+}
+
+.leaflet-popup-tip {
+    background: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
+    border: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+}
+
+/* D3 force graph styling for VM relationships */
+.vm-node {
+    fill: var(--pf-v6-global--palette--green-400, #3e8635);
+    stroke: var(--pf-v6-global--BackgroundColor--light-100, #ffffff);
+    stroke-width: 2px;
+    cursor: pointer;
+}
+
+.vm-node.migrating {
+    fill: var(--pf-v6-global--warning-color--100, #f0ab00);
+    stroke-width: 3px;
+}
+
+.vm-link {
+    stroke: var(--pf-v6-global--BorderColor--200, #c7c7c7);
+    stroke-width: 1px;
+    stroke-opacity: 0.6;
+}
+
+.vm-text {
+    font-family: var(--pf-v6-global--FontFamily--text);
+    font-size: 11px;
+    fill: var(--pf-v6-global--Color--100, #151515);
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border: 2px solid var(--pf-v6-global--BorderColor--100, #d2d2d2);
+    border-top-color: var(--pf-v6-global--primary-color--100, #0066cc);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.map-container.pf-v6-c-card .pf-v6-c-card__body {
+    padding: 0;
     height: 100%;
-    min-height: 480px; /* keep a decent minimum */
-    border-radius: 8px;
+    min-height: 600px;
+    position: relative;
+}
+
+/* Leaflet map styling within OpenShift cards - FORCE SIZE */
+#map {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 650px !important;
+    border-radius: 0;
+    border: none;
+    background: var(--pf-v6-global--BackgroundColor--light-300, #ededed);
     z-index: 1;
 }
 
@@ -115,59 +820,109 @@ main {
     font-size: 12px;
 }
 
-/* Overlay panels on top of the map */
+/* Map controls spacing */
+.leaflet-control-container .leaflet-top.leaflet-right {
+    margin-top: 15px; /* Reduced spacing since stats overlay was removed */
+}
+
+/* Enhanced overlay panels */
 .overlay {
     position: absolute;
     z-index: 1200;
-    max-width: 360px;
+    max-width: 300px; /* Reduced from 360px to 300px */
 }
 
 .overlay .box {
-    background: rgba(255,255,255,0.98);
+    background: rgba(255,255,255,0.95);
     border-radius: 8px;
-    padding: 16px;
+    padding: 12px; /* Reduced from 16px to 12px */
     color: #151515;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    border: 1px solid rgba(210,210,210,0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--pf-v6-global--BorderColor--200);
+    transition: box-shadow 0.2s ease;
+}
+
+.overlay .box:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
 
 .overlay .box h3 {
     color: #151515;
     font-weight: 600;
-    margin-bottom: 12px;
-    font-size: 16px;
+    margin-bottom: 8px; /* Reduced from 12px to 8px */
+    font-size: 15px; /* Reduced from 16px to 15px */
     border-bottom: 1px solid #e5e5e5;
-    padding-bottom: 8px;
+    padding-bottom: 6px; /* Reduced from 8px to 6px */
 }
 
-.overlay-top-left { top: 12px; left: 12px; max-width: 280px; }
-.overlay-bottom-left { bottom: 80px; left: 12px; max-width: 420px; max-height: 420px; overflow: auto; }
-.overlay-top-right { top: 12px; right: 12px; max-width: 260px; }
+.overlay-top-left { top: 12px; left: 12px; max-width: 240px; } /* Reduced from 280px to 240px */
+.overlay-bottom-left { bottom: 80px; left: 12px; max-width: 360px; max-height: 380px; overflow: auto; } /* Reduced max-height from 420px to 380px */
 
 .overlay { z-index: 1400; }
 
-/* VM list rows: Red Hat enterprise styling */
+
+/* Right-side overview panel (static, part of the grid) */
+#overview-panel, .datacenter-panel {
+    position: relative !important;
+    width: 100% !important;
+    max-height: none !important;
+    z-index: 2 !important;
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    border-radius: var(--pf-v6-global--BorderRadius--lg, 8px) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+}
+
+#overview-panel .pf-v6-c-card__header,
+.datacenter-panel .pf-v6-c-card__header {
+    padding: 12px 16px !important;
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100) !important;
+}
+
+#overview-panel .pf-v6-c-card__body,
+.datacenter-panel .pf-v6-c-card__body {
+    padding: 12px !important;
+    overflow-y: auto !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+}
+
+.datacenter-section .datacenter-view,
+.vm-section .vm-list-rows {
+    max-height: calc(100vh - 260px) !important;
+    overflow-y: auto !important;
+    padding-right: 6px !important; /* space for scrollbar */
+}
+
+/* old right-overlay rules removed — overview panel is now part of the layout */
+
+/* Vertical placement is handled dynamically by JS to avoid overlaps when panels expand/collapse */
+
+/* Enhanced VM list styling */
 .vm-list-rows { 
-    padding: 6px; 
+    padding: 4px; /* Reduced from 6px */
 }
 
 .vm-row { 
     background: #ffffff; 
-    border: 1px solid #e5e5e5; 
-    padding: 14px; 
+    border: 1px solid var(--pf-v6-global--BorderColor--100);
+    padding: 10px; /* Reduced from 14px */
     border-radius: 6px;
-    margin-bottom: 8px;
+    margin-bottom: 6px; /* Reduced from 8px */
     transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .vm-row:hover {
-    background: #f8f9fa;
+    background: var(--pf-v6-global--BackgroundColor--200, #f8f9fa);
     border-color: #0066cc;
-    box-shadow: 0 2px 8px rgba(0,102,204,0.1);
+    box-shadow: 0 4px 8px rgba(0,102,204,0.1);
     transform: translateY(-1px);
 }
 
@@ -200,15 +955,25 @@ main {
 .vm-row .vm-name { 
     color: #151515; 
     font-weight: 600;
-    font-size: 15px;
-    margin-bottom: 4px;
+    font-size: 13px; /* Reduced from 15px */
+    margin-bottom: 3px; /* Reduced from 4px */
 }
 
 .vm-row .vm-sub { 
     color: #6a6e73; 
-    font-size: 12px;
+    font-size: 11px; /* Reduced from 12px */
     margin-top: 2px;
-    line-height: 1.4;
+    line-height: 1.3; /* Tighter line height */
+}
+
+/* VM status styling */
+.vm-status.running {
+    color: var(--pf-v6-global--success-color--100);
+    font-weight: 600;
+}
+
+.vm-status.stopped {
+    color: var(--pf-v6-global--Color--light-200);
 }
 
 .vm-row .vm-resources { 
@@ -337,10 +1102,31 @@ main {
     50% { box-shadow: 0 4px 20px rgba(14, 165, 164, 0.4); }
 }
 
-.map-control-btn {
-    /* Use Bulma button look via classes on the element; keep fallback */
-    padding: 8px 12px;
-    font-size: 12px;
+/* Map control button styles - PatternFly will handle base styling */
+.map-control-btn.pf-v6-c-button {
+    padding: var(--pf-t--global--spacer--sm, 8px) var(--pf-t--global--spacer--md, 12px);
+    font-size: var(--pf-t--global--font--size--sm, 12px);
+}
+
+/* Enhanced button styling */
+.pf-v6-c-button.pf-m-secondary {
+    border-color: var(--pf-v6-global--BorderColor--200);
+    transition: all 0.2s ease;
+}
+
+.pf-v6-c-button.pf-m-secondary:hover {
+    background-color: var(--pf-v6-global--BackgroundColor--300);
+    border-color: var(--pf-v6-global--active-color--100);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus states for accessibility */
+button:focus,
+select:focus,
+input:focus {
+    outline: 2px solid var(--pf-v6-global--active-color--100);
+    outline-offset: 2px;
 }
 
 /* Leaflet popup customization */
@@ -405,8 +1191,9 @@ main {
 }
 
 .datacenter-marker:hover .datacenter-label {
-    background: rgba(0, 102, 204, 0.9);
-    transform: scale(1.05);
+    /* Keep the label background consistent on hover (avoid large blue ellipse artifact) */
+    background: rgba(21, 21, 21, 0.9); /* match default dark style */
+    transform: none; /* avoid scaling which can reveal container artefacts */
 }
 
 .datacenter-marker.active {
@@ -675,38 +1462,6 @@ main {
     word-break: break-word;
 }
 
-.stats {
-    background: white;
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    border: 1px solid rgba(210,210,210,0.8);
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-}
-
-.stat-item {
-    text-align: center;
-    padding: 12px;
-    background: #0066cc;
-    border-radius: 4px;
-    color: white;
-}
-
-.stat-value {
-    display: block;
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    opacity: 0.9;
-    font-weight: 500;
-}
-
 .tooltip {
     position: absolute;
     background: rgba(0,0,0,0.9);
@@ -785,7 +1540,31 @@ main {
     }
 }
 
-/* Responsive design */
+/* Loading states */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+    position: relative;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0066cc;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
 @media (max-width: 1024px) {
     main {
         grid-template-columns: 1fr;
@@ -816,6 +1595,8 @@ main {
     
     .map-container {
         padding: 0;
+        min-height: 300px;
+        margin-bottom: var(--pf-v6-global--spacer--lg);
     }
     
     #map {
@@ -840,11 +1621,12 @@ main {
         left: 8px;
     }
     
-    .columns[style*="margin: 0"] {
+    /* Remove old Bulma column selectors */
+    .pf-v6-l-grid[style*="margin: 0"] {
         margin: 0 !important;
     }
     
-    .column[style*="padding: 0"] {
+    .pf-v6-l-grid__item[style*="padding: 0"] {
         padding: 0 !important;
     }
 }
@@ -872,23 +1654,27 @@ main {
 
 /* Two-column layout on very wide screens */
 @media (min-width: 1200px) {
-    /* Use Bulma's .columns as the flex container so inner .column widths behave correctly */
-    .columns {
+    /* Use PatternFly's grid as the flex container */
+    .pf-v6-l-grid.pf-m-gutter {
         display: flex;
-        gap: 24px;
+        gap: var(--pf-t--global--spacer--xl, 24px);
         align-items: stretch;
         width: 100%;
+        height: 100%;
+        min-height: 600px;
     }
 
     /* Make the main content column expand to fill available space */
-    .columns > .column.is-9 {
+    .pf-v6-l-grid__item.pf-m-9-col-on-lg {
         flex: 1 1 auto; /* make left column very flexible */
         min-width: 0; /* allow children to shrink properly */
+        height: 100%;
     }
 
     /* Keep the right panel a fixed-ish column */
-    .columns > .column.is-3 {
-        flex: 0 0 360px; /* slightly wider panel on large screens */
+    .pf-v6-l-grid__item.pf-m-3-col-on-lg {
+        flex: 0 0 300px; /* Reduced from 360px to 300px for better proportions */
+        height: 100%;
     }
 
     .map-container {
@@ -898,7 +1684,7 @@ main {
     /* ultra-wide adjustments for very large monitors (>=2000px) */
     @media (min-width: 2000px) {
         .container { max-width: 98vw; padding: 20px 36px; }
-        .columns > .column.is-3 { flex: 0 0 380px; }
+        .pf-v6-l-grid__item.pf-m-3-col-on-lg { flex: 0 0 340px; } /* Slightly larger on ultra-wide */
         #map { min-height: 760px; }
     }
 
@@ -1110,65 +1896,185 @@ main {
     }
 }
 
-/* Datacenter Panel Styles */
-.datacenter-panel {
+/* Datacenter Panel Styles with enhanced cards */
+/* Datacenter panel styles */
+.datacenter-panel.pf-v6-c-card {
     background: #ffffff;
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border: 1px solid #d2d2d2;
     height: calc(100vh - 120px);
     overflow-y: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--pf-v6-global--BorderColor--100);
+    transition: box-shadow 0.2s ease;
+    max-width: 320px; /* Constrain the maximum width */
 }
 
-.datacenter-panel .title {
-    color: #151515;
-    margin-bottom: 12px;
+.datacenter-panel.pf-v6-c-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.datacenter-panel .pf-v6-c-card__header {
+    padding: 12px 16px; /* More consistent padding */
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100);
+    background: var(--pf-v6-global--BackgroundColor--100);
+}
+
+.datacenter-panel .pf-v6-c-card__body {
+    padding: 0; /* Remove default padding to control it better in child elements */
+}
+
+.datacenter-panel .pf-v6-c-title {
+    color: var(--pf-v6-global--Color--dark-200, #151515);
+    margin-bottom: 0; /* Remove margin to control spacing better */
     font-weight: 600;
-    border-bottom: 2px solid #e5e5e5;
-    padding-bottom: 6px;
-    font-size: 18px;
+    font-size: 15px; /* Slightly smaller font */
 }
 
+/* ------------------------------------------------------------------
+   High-specificity override: Force two-column layout (map left, fixed
+   width overview right). This intentionally lives at the end of the
+   stylesheet so it wins over PatternFly rules and previously defined
+   selectors while preserving mobile responsive behavior above.
+   ------------------------------------------------------------------ */
+.pf-v6-c-page .openshift-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 24px !important;
+    height: calc(100vh - 120px) !important;
+    min-height: 600px !important;
+    overflow: hidden !important;
+}
+
+.pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-8-col-on-lg,
+.pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-9-col-on-lg {
+    /* Left / main column: map should participate in flow and grow */
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    order: 1 !important;
+    z-index: 1 !important;
+}
+
+.pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-4-col-on-lg,
+.pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-3-col-on-lg,
+.pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item:last-child {
+    /* Right / sidebar: fixed width and part of normal flow */
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    left: auto !important;
+    bottom: auto !important;
+    flex: 0 0 320px !important;
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
+    height: 100% !important;
+    order: 2 !important;
+    z-index: 20 !important;
+    margin: 0 !important;
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+}
+
+/* Make sure overview panel itself is not absolutely positioned */
+#overview-panel {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Keep mobile responsive behavior intact (reapply earlier mobile overrides) */
+@media (max-width: 768px) {
+    .pf-v6-c-page .openshift-layout {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+    }
+    .pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-4-col-on-lg,
+    .pf-v6-c-page .openshift-layout > .pf-v6-l-grid__item.pf-m-3-col-on-lg {
+        position: fixed !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        max-height: 50vh !important;
+        z-index: 9999 !important;
+    }
+}
+
+/* VM list panel improvements */
 .vm-list-panel {
-    margin-top: 12px;
+    margin-top: 0;
+    padding: 16px; /* Consistent padding with surrounding elements */
+    border-top: 1px solid var(--pf-v6-global--BorderColor--100);
+    background: transparent;
+}
+
+.vm-list-panel .pf-v6-c-title {
+    color: var(--pf-v6-global--Color--dark-200);
+    margin-bottom: 12px; /* Consistent spacing */
+    font-weight: 600;
+    font-size: 14px; /* Slightly larger for better hierarchy */
 }
 
 .vm-list-panel .vm-list {
-    background: #ffffff;
-    border-radius: 8px;
-    padding: 12px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
-    border: 1px solid #f1f5f9;
+    background: var(--pf-v6-global--BackgroundColor--100);
+    border-radius: var(--pf-v6-global--BorderRadius--md);
+    border: 1px solid var(--pf-v6-global--BorderColor--100);
+    padding: 8px; /* Consistent padding */
+    margin-top: 0; /* Remove top margin since title already has bottom margin */
 }
 
 .vm-list-panel .vm-list-rows {
-    max-height: 320px;
+    max-height: 220px; /* Slightly more room */
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px; /* Consistent gap */
 }
 
 .datacenter-view {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px; /* Reduced gap for tighter spacing */
+    padding: 16px; /* Add consistent padding */
+}
+
+/* Ensure datacenter view is visible by default */
+.datacenter-view:not(.collapsed) {
+    display: flex;
+    max-height: none;
+    opacity: 1;
 }
 
 .empty-state {
     text-align: center;
-    padding: 40px 20px;
+    padding: 20px; /* Reduced padding */
     color: #6a6e73;
     font-style: italic;
+    font-size: 13px; /* Smaller font */
 }
 
+/* Enhanced datacenter cards with status indicators */
 .datacenter-card {
     background: #f8f9fa;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
-    padding: 16px;
+    border: 1px solid var(--pf-v6-global--BorderColor--100);
+    border-radius: 6px; /* Slightly reduced from 8px */
+    padding: 12px; /* Reduced from 16px */
     transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 8px; /* Reduced spacing between cards */
+}
+
+.datacenter-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
 }
 
 .datacenter-card.selected {
@@ -1177,16 +2083,24 @@ main {
     box-shadow: 0 2px 8px rgba(0,102,204,0.1);
 }
 
+.datacenter-card.active {
+    border-left: 4px solid var(--pf-v6-global--success-color--100);
+}
+
+.datacenter-card.inactive {
+    border-left: 4px solid var(--pf-v6-global--Color--light-200);
+}
+
 .datacenter-header {
     display: flex;
     align-items: center;
     justify-content: between;
-    margin-bottom: 12px;
+    margin-bottom: 8px; /* Reduced from 12px */
     cursor: pointer;
 }
 
 .datacenter-title {
-    font-size: 16px;
+    font-size: 14px; /* Reduced from 16px */
     font-weight: 600;
     color: #151515;
     margin: 0;
@@ -1196,23 +2110,40 @@ main {
 .datacenter-status {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 12px;
+    gap: 6px; /* Reduced from 8px */
+    font-size: 11px; /* Reduced from 12px */
     color: #6a6e73;
 }
 
 .status-indicator {
-    width: 8px;
-    height: 8px;
+    width: 6px; /* Reduced from 8px */
+    height: 6px; /* Reduced from 8px */
     border-radius: 50%;
     background: #28a745;
 }
 
 .datacenter-meta {
-    font-size: 12px;
+    font-size: 11px; /* Reduced from 12px */
     color: #6a6e73;
+    margin-bottom: 8px; /* Reduced from 12px */
+    line-height: 1.3; /* Tighter line height */
+}
+
+/* Back button styling */
+.datacenter-back-btn {
     margin-bottom: 12px;
-    line-height: 1.4;
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--pf-v6-global--link--Color);
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.datacenter-back-btn:hover {
+    color: var(--pf-v6-global--link--Color--hover);
+    text-decoration: underline;
 }
 
 .clusters-section {
@@ -1278,22 +2209,25 @@ main {
     margin-top: 8px;
 }
 
+/* Enhanced VM list items */
 .vm-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 8px;
-    margin-bottom: 4px;
+    padding: var(--pf-v6-global--spacer--xs); /* Reduced padding */
+    margin-bottom: 3px; /* Reduced from 4px */
     background: #f8f9fa;
-    border: 1px solid #e5e5e5;
+    border: 1px solid var(--pf-v6-global--BorderColor--100);
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 11px; /* Reduced from 12px */
     transition: all 0.2s ease;
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100);
 }
 
 .vm-item:hover {
-    background: #e9ecef;
+    background: var(--pf-v6-global--BackgroundColor--200);
     border-color: #0066cc;
+    transform: translateY(-1px);
 }
 
 .vm-item.migrating {
@@ -1304,25 +2238,27 @@ main {
 .vm-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px; /* Reduced from 2px */
     flex: 1;
 }
 
 .vm-name {
     font-weight: 600;
     color: #151515;
+    font-size: 11px; /* Add explicit smaller font size */
 }
 
 .vm-details {
     color: #6a6e73;
-    font-size: 11px;
+    font-size: 10px; /* Reduced from 11px */
+    line-height: 1.2; /* Tighter line height */
 }
 
 .vm-status {
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
+    font-size: 10px; /* Reduced from 11px */
 }
 
 .vm-status-icon {
@@ -1374,14 +2310,28 @@ main {
     padding: 8px;
 }
 
+/* Responsive design with mobile optimizations */
 @media (max-width: 1024px) {
-    .columns {
+    .pf-v6-l-grid.pf-m-gutter {
         flex-direction: column;
+        gap: var(--pf-v6-global--spacer--sm);
+    }
+    
+    .pf-v6-l-grid__item {
+        flex: none;
+        min-height: 400px;
+        max-width: none; /* Remove width constraints on smaller screens */
+    }
+    
+    .pf-v6-l-grid__item.pf-m-3-col-on-lg {
+        flex: none;
+        max-width: none;
     }
     
     .datacenter-panel {
         height: 50vh;
         max-height: 50vh;
+        max-width: none; /* Remove width constraint */
     }
     
     #map {
@@ -1393,36 +2343,534 @@ main {
         padding: 0 12px 12px 12px;
     }
     
+    /* Minimized header for mobile */
+    .pf-v6-c-page__main-section {
+        padding: 8px 16px; /* Further reduced padding */
+    }
+    
     header {
-        margin: 12px 16px 8px 16px;
+        margin: 0; /* Remove margins */
     }
     
     header h1 {
         font-size: 20px;
     }
+    
+    .stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    /* Overlay adjustments for smaller screens */
+    .overlay-bottom-left { max-width: calc(100vw - 40px); }
 }
 
 /* Migration Panel Styles */
 .migration-panel {
-    margin-top: 16px;
+    margin-top: 0;
+    padding: 16px; /* Consistent padding with VM panel */
+    border-top: 1px solid var(--pf-v6-global--BorderColor--100);
+    background: transparent;
+}
+
+/* Ensure migrations below map header doesn't interfere with content */
+.migrations-below-map .pf-v6-c-card__header {
+    flex-shrink: 0; /* Prevent header from shrinking */
+    padding: 8px 16px; /* Reduced header padding for more content space */
+}
+
+.migration-panel .pf-v6-c-title {
+    color: var(--pf-v6-global--Color--dark-200);
+    margin-bottom: 12px; /* Consistent with VM panel */
+    font-weight: 600;
+    font-size: 14px; /* Consistent with VM panel */
+}
+
+/* Collapsible functionality styles */
+.collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+    padding: 8px 0;
+    position: relative;
+    z-index: 1;
+}
+
+.collapsible-header:hover {
+    background-color: rgba(0, 102, 204, 0.05);
+}
+
+.collapsible-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.collapsible-title .pf-v6-c-title {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.collapse-toggle {
+    background: none !important;
+    border: none !important;
+    color: var(--pf-v6-global--Color--dark-100);
+    padding: 4px !important;
+    margin: 0 !important;
+    min-height: auto !important;
+    width: auto !important;
+    height: auto !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, color 0.2s ease;
+    pointer-events: none; /* Prevent interference with parent click handler */
+}
+
+.collapse-toggle:hover {
+    color: var(--pf-v6-global--primary-color--100);
+    background: none !important;
+}
+
+.collapse-toggle i {
+    font-size: 12px;
+    transition: transform 0.3s ease;
+}
+
+.collapsible-header.collapsed .collapse-toggle i {
+    transform: rotate(-90deg);
+}
+
+.collapsible-content {
+    transition: max-height 0.3s ease-out, padding 0.3s ease-out, opacity 0.3s ease-out, visibility 0.3s ease-out;
+    max-height: none !important; /* Allow natural height by default */
+    overflow: visible !important; /* Default to visible overflow */
+}
+
+.collapsible-content:not(.collapsed) {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: var(--pf-v6-global--spacer--lg, 24px) !important;
+    margin: inherit !important;
+    border: inherit !important;
+    background: inherit !important;
+    box-shadow: inherit !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Constrain Active VMs panel height even when expanded to prevent overlap */
+.pf-v6-c-card .collapsible-content[data-section="active-vms"]:not(.collapsed),
+.collapsible-content[data-section="active-vms"]:not(.collapsed) {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    /* Force height constraint even with inline styles */
+    height: auto !important;
+    /* Remove any borders that might create extra lines */
+    border-bottom: none !important;
+}
+
+/* Ensure VM list within Active VMs panel is properly constrained */
+.pf-v6-c-card .collapsible-content[data-section="active-vms"]:not(.collapsed) .vm-list,
+.collapsible-content[data-section="active-vms"]:not(.collapsed) .vm-list {
+    max-height: 280px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scroll-behavior: smooth; /* Smooth scrolling */
+}
+
+/* Remove any bottom borders from elements within Active VMs panel */
+.collapsible-content[data-section="active-vms"]:not(.collapsed) .filter-section,
+.collapsible-content[data-section="active-vms"]:not(.collapsed) .vm-list-rows,
+.collapsible-content[data-section="active-vms"]:not(.collapsed) .content-section {
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+}
+
+/* Ensure the last child in Active VMs doesn't add extra spacing */
+.collapsible-content[data-section="active-vms"]:not(.collapsed) > *:last-child {
+    margin-bottom: 0 !important;
+    border-bottom: none !important;
+}
+
+/* Additional safety rule for Active VMs panel with highest specificity */
+.panel-card .pf-v6-c-card__body.collapsible-content[data-section="active-vms"]:not(.collapsed) {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    position: relative !important;
+    /* Prevent flex grow that might cause expansion */
+    flex-grow: 0 !important;
+    flex-shrink: 1 !important;
+    /* Remove any bottom borders or spacing that create extra lines */
+    border-bottom: none !important;
+    padding-bottom: var(--pf-v6-global--spacer--lg, 24px) !important;
+}
+
+/* Active Migrations panel as top-left overlay - single migration width */
+.migrations-below-map {
+    position: absolute !important;
+    left: var(--pf-v6-global--spacer--md, 16px) !important;
+    width: 350px !important; /* Fixed narrow width for single migration */
+    z-index: 1000 !important;
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    border-radius: var(--pf-v6-global--BorderRadius--lg, 8px) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+    overflow: hidden !important; /* Prevent content from spilling outside */
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    -webkit-box-sizing: border-box !important;
+    transition: top 180ms ease, max-height 180ms ease;
+}
+
+/* Compact layout for migrations below map - optimized for single migration display */
+.migrations-below-map .pf-v6-c-card__body {
+    flex: 1 !important; /* Take remaining space in flex container */
+    min-height: 0 !important; /* Allow flex shrinking */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 12px !important; /* Further reduced padding for more content space */
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+}
+
+/* Vertical layout for migration items when below map - single column */
+.migrations-below-map .migration-list-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pf-v6-global--spacer--sm, 8px);
+    overflow-y: auto !important; /* Force scrollable when content overflows */
+    overflow-x: hidden !important;
+    flex: 1 !important; /* Take all available space */
+    min-height: 0 !important; /* Allow flex shrinking */
+    padding-right: 4px; /* Space for scrollbar */
+    box-sizing: border-box !important;
+}
+
+.migrations-below-map .migration-item {
+    width: 100%; /* Full width of container */
+    min-width: auto;
+    max-width: none;
+    flex-shrink: 0; /* Prevent items from shrinking */
+}
+
+/* Style scrollbar for Active VMs panel */
+.collapsible-content[data-section="active-vms"]::-webkit-scrollbar {
+    width: 8px;
+}
+.collapsible-content[data-section="active-vms"]::-webkit-scrollbar-track {
+    background: var(--pf-v6-global--BackgroundColor--200);
+    border-radius: 4px;
+}
+.collapsible-content[data-section="active-vms"]::-webkit-scrollbar-thumb {
+    background: var(--pf-v6-global--BorderColor--200);
+    border-radius: 4px;
+}
+.collapsible-content[data-section="active-vms"]::-webkit-scrollbar-thumb:hover {
+    background: var(--pf-v6-global--BorderColor--300);
+}
+
+/* Ensure proper styling for datacenter and VM items in expanded panels */
+.collapsible-content:not(.collapsed) .datacenter-card {
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    border: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2) !important;
+    border-radius: var(--pf-v6-global--BorderRadius--sm, 4px) !important;
+    padding: var(--pf-v6-global--spacer--md, 16px) !important;
+    margin-bottom: var(--pf-v6-global--spacer--sm, 8px) !important;
+    box-shadow: 0 1px 2px rgba(3, 3, 3, 0.06) !important;
+}
+
+/* VM items - remove excessive borders, use subtle styling */
+.collapsible-content:not(.collapsed) .vm-row,
+.collapsible-content:not(.collapsed) .vm-item {
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    border: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2) !important;
+    border-radius: var(--pf-v6-global--BorderRadius--sm, 4px) !important;
+    padding: var(--pf-v6-global--spacer--sm, 8px) var(--pf-v6-global--spacer--md, 16px) !important;
+    margin-bottom: var(--pf-v6-global--spacer--xs, 4px) !important;
+    /* Remove heavy box-shadow for cleaner look */
+}
+
+/* Cluster containers - minimal styling to avoid border overload */
+.collapsible-content:not(.collapsed) .cluster-container,
+.collapsible-content:not(.collapsed) .cluster-vms {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: var(--pf-v6-global--spacer--xs, 4px) 0 !important;
+}
+
+/* Migration items - subtle styling */
+.collapsible-content:not(.collapsed) .migration-item {
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    border-left: 3px solid var(--pf-v6-global--warning-color--100, #f0ab00) !important;
+    border-radius: var(--pf-v6-global--BorderRadius--sm, 4px) !important;
+    padding: var(--pf-v6-global--spacer--sm, 8px) var(--pf-v6-global--spacer--md, 16px) !important;
+    margin-bottom: var(--pf-v6-global--spacer--xs, 4px) !important;
+}
+
+/* Datacenter status badges and other badges */
+.collapsible-content:not(.collapsed) .status-badge,
+.collapsible-content:not(.collapsed) .datacenter-status .badge {
+    background: var(--pf-v6-global--success-color--100, #3e8635) !important;
+    color: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    padding: 2px 8px !important;
+    border-radius: 12px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+}
+
+/* VM list and rows - subtle left accent only */
+.collapsible-content:not(.collapsed) .vm-list-rows .vm-row {
+    border-left: 3px solid var(--pf-v6-global--info-color--100, #0066cc) !important;
+    border-top: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+}
+
+/* Form controls in expanded panels */
+.collapsible-content:not(.collapsed) .pf-v6-c-form-control,
+.collapsible-content:not(.collapsed) input,
+.collapsible-content:not(.collapsed) select {
+    border: 1px solid var(--pf-v6-global--BorderColor--100, #d2d2d2) !important;
+    background: var(--pf-v6-global--BackgroundColor--100, #ffffff) !important;
+    padding: var(--pf-v6-global--spacer--sm, 8px) !important;
+}
+
+.collapsible-content.collapsed {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* Specific adjustments for different panels */
+.datacenter-panel .pf-v6-c-card__header.collapsible-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100);
+    background: var(--pf-v6-global--BackgroundColor--100);
+}
+
+.vm-list-panel .collapsible-header {
+    padding: 0 0 8px 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100);
+}
+
+.migration-panel .collapsible-header {
+    padding: 0 0 8px 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--pf-v6-global--BorderColor--100);
+}
+
+/* Adjust content padding when collapsed */
+.vm-list-panel .collapsible-content {
+    padding-top: 0;
+}
+
+.migration-panel .collapsible-content {
+    padding-top: 0;
+}
+
+/* Prevent collapsible headers from interfering with datacenter card clicks */
+.datacenter-card {
+    position: relative;
+    z-index: 2; /* Higher than collapsible headers */
+}
+
+.datacenter-header {
+    position: relative;
+    z-index: 3; /* Highest for clickable datacenter elements */
 }
 
 .migration-list {
-    max-height: 300px;
+    background: var(--pf-v6-global--BackgroundColor--100);
+    border-radius: var(--pf-v6-global--BorderRadius--md);
+    border: 1px solid var(--pf-v6-global--BorderColor--100);
+    padding: 8px; /* Consistent padding */
+    margin-top: 0; /* Remove top margin since title already has bottom margin */
+    max-height: 200px; /* Consistent with VM list */
     overflow-y: auto;
-    padding: 4px;
-    background: #fafafa;
+}
+
+/* Filter controls styling */
+.filter-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding: 0;
+    font-size: 12px;
+    color: var(--pf-v6-global--Color--dark-100);
+}
+
+/* Make the input area grow to fill available space in filter-controls */
+.filter-controls .filter-input {
+    flex: 1 1 auto;
+    min-width: 0; /* allow flex children to shrink */
+}
+
+.filter-controls .filter-input .pf-v6-c-form-control {
+    width: 100%;
+}
+
+/* VM panel specific tweaks: put the Show selector on its own row and limit the search input width */
+.vm-list-panel .vm-show-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vm-list-panel .vm-show-row .pf-v6-c-form-control {
+    width: auto;
+    min-width: 140px; /* reasonable minimum width for the dropdown */
+}
+
+.vm-list-panel .filter-controls .filter-input .pf-v6-c-form-control {
+    max-width: 110px !important; /* match migrations width */
+    width: 110px !important;
+    height: 26px !important; /* match migrations control height */
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    border-radius: 4px !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Make the Show select visually match the migrations select size */
+.vm-list-panel .vm-show-row .pf-v6-c-form-control {
+    max-width: 110px !important;
+    width: 110px !important;
+    height: 26px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    border-radius: 4px !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Search controls for VM name filtering */
+.search-controls {
+    margin-bottom: 8px;
+    padding: 0;
+}
+
+.search-controls input {
+    width: 100%;
+    font-size: 12px;
+    padding: 6px 8px;
     border-radius: 4px;
-    border: 1px solid #e1e5e9;
+    border: 1px solid var(--pf-v6-global--BorderColor--100);
+    background: white;
+    transition: border-color 0.2s ease;
+}
+
+.search-controls input:focus {
+    outline: none;
+    border-color: var(--pf-v6-global--primary-color--100);
+    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
+}
+
+.search-controls input::placeholder {
+    color: var(--pf-v6-global--Color--dark-100);
+    font-style: italic;
+}
+
+/* Title with count badge styling */
+.title-with-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.count-badge {
+    background: var(--pf-v6-global--primary-color--100);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+    line-height: 1.2;
+    display: inline-block;
+}
+
+.count-badge:empty,
+.count-badge[data-count="0"] {
+    background: var(--pf-v6-global--Color--dark-100);
+}
+
+.filter-controls select {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--pf-v6-global--BorderColor--100);
+    background: white;
+}
+
+.filter-controls label {
+    font-size: 12px;
+    color: var(--pf-v6-global--Color--dark-100);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.filter-controls .filter-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filter-controls .pf-v6-c-button {
+    font-size: 12px;
+    padding: 4px 8px;
+    height: auto;
+}
+
+/* Fix refresh button icon visibility */
+#refresh-migrations {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: opacity 0.2s ease;
+}
+
+#refresh-migrations i {
+    display: inline-block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    font-size: 12px;
+}
+
+#refresh-migrations:hover i {
+    animation: refresh-spin 0.5s ease-in-out;
+}
+
+#refresh-migrations.refreshing i {
+    animation: refresh-spin 1s linear infinite;
+}
+
+@keyframes refresh-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .migration-item {
     background: white;
     border-radius: 4px;
-    padding: 8px 10px;
-    margin-bottom: 6px;
+    padding: 6px 8px; /* Reduced from 8px 10px */
+    margin-bottom: 4px; /* Reduced from 6px */
     border: 1px solid #e1e5e9;
-    font-size: 11px;
+    font-size: 10px; /* Reduced from 11px */
     transition: all 0.2s ease;
     cursor: pointer;
 }
@@ -1509,4 +2957,66 @@ main {
     font-style: italic;
     padding: 20px;
     font-size: 12px;
+}
+
+/* ------------------------------------------------------------------
+   Active VMs panel - layout fixes
+
+   Purpose: normalize the `.vm-row` layout inside the Active VMs
+   collapsible panel so the action buttons (e.g. "Center") are
+   consistently right-aligned and the resource summary box (.vm-resources)
+   appears as a full-width element below the main row content.
+   This is a narrow, high-specificity override scoped to the
+   active-vms section to avoid disturbing other VM list variants.
+   ------------------------------------------------------------------ */
+.panel-card .pf-v6-c-card__body.collapsible-content[data-section="active-vms"] .vm-row,
+.collapsible-content[data-section="active-vms"] .vm-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    box-sizing: border-box !important;
+}
+
+.panel-card .pf-v6-c-card__body.collapsible-content[data-section="active-vms"] .vm-row .vm-meta,
+.collapsible-content[data-section="active-vms"] .vm-row .vm-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important; /* allow text truncation */
+}
+
+.panel-card .pf-v6-c-card__body.collapsible-content[data-section="active-vms"] .vm-row .vm-actions,
+.collapsible-content[data-section="active-vms"] .vm-row .vm-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 0 0 auto !important;
+    margin-left: 8px !important;
+}
+
+/* Make resources take full width below the main row so they don't
+   visually overlap or offset the action column. */
+.panel-card .pf-v6-c-card__body.collapsible-content[data-section="active-vms"] .vm-row .vm-resources,
+.collapsible-content[data-section="active-vms"] .vm-row .vm-resources {
+    order: 2 !important;
+    flex-basis: 100% !important;
+    width: 100% !important;
+    margin-top: 8px !important;
+    background: #f8f9fa !important;
+    padding: 6px 8px !important;
+    border-left: 3px solid #0066cc !important;
+    border-radius: 4px !important;
+    box-sizing: border-box !important;
+}
+
+/* Ensure primary name/sub text stays on one line and truncates if needed */
+.collapsible-content[data-section="active-vms"] .vm-row .vm-name {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
 }

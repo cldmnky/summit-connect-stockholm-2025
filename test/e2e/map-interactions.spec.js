@@ -57,26 +57,21 @@ test.describe('Map interactions', () => {
     await expect(markers.first()).toBeVisible();
   });
 
-  test('stats panel shows correct information', async ({ page }) => {
+  test('map loads without stats overlay', async ({ page }) => {
     await page.goto(BASE_URL);
     
-    await page.waitForSelector('#stats-panel', { timeout: 5000 });
+    // Wait for map to load
+    await page.waitForSelector('#map', { timeout: 5000 });
     
-    // Stats panel should be visible
-    await expect(page.locator('#stats-panel')).toBeVisible();
+    // Stats panel should no longer exist (removed)
+    await expect(page.locator('#stats-panel')).not.toBeVisible();
     
-    // Should show total VMs and active datacenters
-    const totalVms = page.locator('#total-vms');
-    const activeDatacenters = page.locator('#active-datacenters');
+    // Map should still be functional and visible
+    const map = page.locator('#map');
+    await expect(map).toBeVisible();
     
-    await expect(totalVms).toBeVisible();
-    await expect(activeDatacenters).toBeVisible();
-    
-    // Values should be numbers
-    const totalVmsText = await totalVms.textContent();
-    const activeDatacentersText = await activeDatacenters.textContent();
-    
-    expect(totalVmsText).toMatch(/^\d+$/);
-    expect(activeDatacentersText).toMatch(/^\d+$/);
+    // Legend should still be present
+    const legend = page.locator('.legend');
+    await expect(legend).toBeVisible();
   });
 });
