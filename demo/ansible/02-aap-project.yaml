@@ -1,0 +1,16 @@
+apiVersion: tower.ansible.com/v1alpha1
+# kind: AnsibleProject
+# NOTE: using tower CRs (tower.ansible.com/v1alpha1) - adjust if your operator uses different group/version
+kind: AnsibleProject
+metadata:
+  name: summit-connect
+  namespace: aap
+spec:
+  connection_secret: aap-access
+  scm_type: git
+  # Use this repository as the SCM source for the AWX project
+  scm_url: "https://github.com/cldmnky/summit-connect-stockholm-2025.git"
+  scm_branch: "main"
+  playbook_directory: "demo/ansible/playbooks"
+  project_type: "git"
+# This creates a git-backed project pointing at this repo.

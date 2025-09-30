@@ -1,0 +1,42 @@
+---
+# KubeVirt dynamic inventory plugin configuration.
+# This file is intended to be stored in the project (demo/ansible/inventory.kubevirt.yml)
+# and referenced by the AAP inventory source. The plugin expects the target
+# cluster credentials to be available as environment variables (K8S_AUTH_HOST and K8S_AUTH_API_KEY).
+# The KubeVirt inventory plugin comes from the redhat/openshift_virtualization collection
+# or community.kubevirt collection depending on your environment.
+
+plugin: kubevirt.core.kubevirt
+host_key_checking: False
+# Read cluster URL and token from environment variables injected by AAP custom credential
+# The controller docs recommend providing credentials via a Kubernetes API Bearer Token
+# credential (or injecting env vars) so the plugin can authenticate to the target cluster.
+kubevirt_url: "{{ lookup('env','K8S_AUTH_HOST') }}"
+kubevirt_token: "{{ lookup('env','K8S_AUTH_API_KEY') }}"
+kubevirt_verify_ssl: False
+
+# Example groups using JMESPath-like expressions on VM metadata
+groups:
+  namespace-workloads: "metadata.namespace == 'workloads'"
+  running-vms: "status.phase == 'Running'"
+
+# Optional: map VM annotations/labels into host variables
+compose:
+  ansible_host: "status.interfaces[0].ipAddress"
+  vm_namespace: "metadata.namespace"
+
+# Optional 'connections' block demonstrates how to limit discovery to specific namespaces
+# when using the OpenShift Virtualization inventory source in Automation Controller.
+# Examples:
+connections:
+  - namespaces:
+    - workloads        # Discover VMs in the 'workloads' namespace
+    - default          # Also include 'default' namespace VMs
+    - demo-*           # Pattern matching for demo namespaces (if supported)
+
+# Alternative: discover ALL VMs across all namespaces (comment out connections block)
+# or leave connections empty: connections: []
+
+# Save this file in the project repo (demo/ansible/inventory.kubevirt.yml) and
+# configure a custom credential in AAP that injects K8S_AUTH_HOST and K8S_AUTH_API_KEY
+# environment variables when the inventory source is synced.

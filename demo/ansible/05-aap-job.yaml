@@ -1,0 +1,14 @@
+apiVersion: tower.ansible.com/v1alpha1
+# kind: AnsibleJob
+# Launch the bootc switch playbook with imagename passed as extra_var
+kind: AnsibleJob
+metadata:
+  name: bootc-switch-job
+  namespace: aap
+spec:
+  connection_secret: aap-access
+  job_template_name: bootc-switch
+  extra_vars: |
+    imagename: "<REPLACE_WITH_IMAGE_NAME>"
+# Create this resource to launch the JobTemplate defined above. The operator uses the
+# connection secret to talk to AWX and launch the job.

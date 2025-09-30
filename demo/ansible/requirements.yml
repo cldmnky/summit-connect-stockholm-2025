@@ -1,0 +1,28 @@
+---
+# Ansible collection requirements for the summit-connect project
+# This file ensures the AAP execution environment has the necessary collections
+# for KubeVirt inventory and OpenShift operations.
+collections:
+  # KubeVirt inventory plugin - recommended for OpenShift Virtualization
+  - name: kubevirt.core
+    version: ">=1.0.0"
+  
+  # Alternative/additional collections for KubeVirt support
+  - name: redhat.openshift_virtualization
+    version: ">=1.0.0"
+    
+  # Kubernetes core operations (k8s module, kubectl connection plugin)
+  - name: kubernetes.core
+    version: ">=3.0.0"
+    
+  # General community collections for additional functionality
+  - name: community.general
+    version: ">=6.0.0"
+    
+  # POSIX utilities (often needed for VM management tasks)
+  - name: ansible.posix
+    version: ">=1.5.0"
+
+# Note: The AAP execution environment should include these collections.
+# If using a custom EE, add this requirements.yml to the build context.
+# For operator-based deployments, these may be pre-installed in Red Hat EEs.

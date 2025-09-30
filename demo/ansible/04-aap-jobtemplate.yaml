@@ -1,0 +1,15 @@
+apiVersion: tower.ansible.com/v1alpha1
+# kind: JobTemplate
+# NOTE: using tower CRs (tower.ansible.com/v1alpha1) - adjust if your operator uses different group/version
+kind: JobTemplate
+metadata:
+  name: bootc-switch-template
+  namespace: aap
+spec:
+  connection_secret: aap-access
+  job_template_name: bootc-switch
+  job_template_project: summit-connect
+  job_template_playbook: bootc-switch.yml
+  job_template_inventory: demo-inventory
+  job_template_credential: demo-credential
+# Ensure the playbook name exists in the project path or in the SCM repository.
