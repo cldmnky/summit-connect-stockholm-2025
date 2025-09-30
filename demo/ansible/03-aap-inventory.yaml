@@ -1,0 +1,29 @@
+apiVersion: tower.ansible.com/v1alpha1
+kind: AnsibleInventory
+metadata:
+  name: kubevirt-inventory
+  namespace: aap
+spec:
+  connection_secret: aap-access
+  name: kubevirt-inventory
+  organization: Default
+  # Use project-sourced inventory file which uses the KubeVirt inventory plugin
+  inventory_sources:
+    - name: kubevirt-source
+      source: project
+      source_path: inventory.kubevirt.yml
+      # If your operator requires credential references for custom credential injection,
+      # create a credential that contains the target cluster API URL and token and
+      # configure a container group as described in the Red Hat guide.
+
+# Example `inventory.kubevirt.yml` that should live in the project path (demo/ansible/playbooks/inventory.kubevirt.yml):
+# plugin: community.kubevirt.kubevirt
+# host_key_checking: False
+# kubevirt_url: https://api.openshift.example.com:6443
+# kubevirt_token: "{{ lookup('env', 'K8S_AUTH_API_KEY') }}"
+# kubevirt_verify_ssl: False
+# groups:
+#   namespace-workloads: "metadata.namespace == 'workloads'"
+
+# The AWX/AAP UI or operator may require custom credentials to be created which inject
+# environment variables like K8S_AUTH_HOST and K8S_AUTH_API_KEY for the KubeVirt plugin.

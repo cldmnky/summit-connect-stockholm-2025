@@ -1,0 +1,30 @@
+---
+- name: Run bootc switch on KubeVirt VM
+  hosts: kubevirt-vm
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Ensure bootc CLI is present
+      ansible.builtin.command:
+        cmd: which bootc
+      register: bootc_path
+      ignore_errors: true
+
+    - name: Upload bootc binary if missing (optional)
+      ansible.builtin.copy:
+        src: /tmp/bootc
+        dest: /usr/local/bin/bootc
+        mode: '0755'
+      when: bootc_path.rc != 0
+
+    - name: Run bootc switch with the provided image name
+      ansible.builtin.shell: |
+        /usr/local/bin/bootc switch --apply {{ imagename }}
+      args:
+        executable: /bin/bash
+      register: bootc_result
+      failed_when: bootc_result.rc != 0
+
+    - name: Show bootc output
+      ansible.builtin.debug:
+        var: bootc_result.stdout
