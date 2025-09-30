@@ -2,10 +2,10 @@ apiVersion: shipwright.io/v1beta1
 kind: Build
 metadata:
   namespace: summit-connect-demo
-  name: virt-corp-summit-app
+  name: summit-connect-app
 spec:
   output:
-    image: quay.io/cldmnky/virt-corp-summit-app:latest
+    image: quay.io/cldmnky/summit-connect-app:latest
     pushSecret: quay-push-secret
   source:
     git:
