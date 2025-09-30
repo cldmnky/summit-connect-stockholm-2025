@@ -24,10 +24,18 @@ LABEL MAINTAINER="Virt Corp <rhel@virt-corp.com>"
 # Copy the compiled binary from the builder's writable /tmp location
 COPY --from=builder /tmp/bin/summit-connect /usr/local/bin/summit-connect
 
-# Systemd service for the Summit Connect application
+# Systemd service and mount units for the Summit Connect application
 COPY demo/bootc/summit-connect-app/summit-connect.service /etc/systemd/system/summit-connect.service
+COPY demo/bootc/summit-connect-app/etc-summit-connect-config.mount /etc/systemd/system/etc-summit-connect-config.mount
+COPY demo/bootc/summit-connect-app/etc-summit-connect-kubeconfigs.mount /etc/systemd/system/etc-summit-connect-kubeconfigs.mount
+
+# Create mount point directories and enable systemd units
 RUN chmod +x /usr/local/bin/summit-connect && \
-    systemctl enable summit-connect
+    mkdir -p /etc/summit-connect/config && \
+    mkdir -p /etc/summit-connect/.kubeconfigs && \
+    systemctl enable summit-connect && \
+    systemctl enable etc-summit-connect-config.mount && \
+    systemctl enable etc-summit-connect-kubeconfigs.mount
 
 # Runtime expectations when running inside a bootc VM or container:
 # - A Kubernetes Secret (or volume) containing `datacenters.yaml` will be mounted
