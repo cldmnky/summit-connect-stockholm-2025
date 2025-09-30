@@ -1,7 +1,5 @@
 [Unit]
 Description=Mount CONFIG volume to /etc/summit-connect/config
-After=blockdev@dev-disk-by\x2did-virtio\x2dCONFIG.target
-Requires=blockdev@dev-disk-by\x2did-virtio\x2dCONFIG.target
 
 [Mount]
 What=/dev/disk/by-id/virtio-CONFIG
