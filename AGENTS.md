@@ -1,106 +1,166 @@
 ---
-description: Enforces use of the Makefile
+description: Authoritative guidance for AI agents and contributors. Contains Makefile-first rules and PatternFly conventions.
 alwaysApply: true
+globs: "**/*"
 ---
 
-Makefile Rule
-=============
+# AGENTS.md — Summit Connect (Stockholm 2025)
 
-- **Always use the Makefile targets to run the server.**
-- **Prefer the `make dev &` command.**
-- **Run the dev server in the background.**
+This file is the canonical instructions set for AI coding agents and humans working in this repository. It combines the VS Code "Use an AGENTS.md file" guidance, the agents.md open standard, and project-specific rules (notably: always prefer Makefile targets).
 
-Makefile usage
---------------
+Use this file to discover:
 
-Follow these quick instructions when running the application locally. The repository Makefile defines the canonical targets for starting, stopping and developing the server; use those targets rather than launching the binary directly.
+- What tasks are allowed and how to run them (Makefile targets).
+- Which tools are preferred for which tasks (air, ko, podman, npm/playwright, go).
+- Project-specific conventions (PatternFly frontend rules, security, and testing requirements).
 
-Recommended (development, background):
+If you are an automated agent, obey `alwaysApply: true` rules and the Makefile-first policy. If in doubt, prefer the Makefile target over invoking tools directly.
 
-```bash
-# Start the dev server in the background (job control)
-make dev &
-```
+## Why this exists
 
-Recommended (development, background with logs):
+VS Code's experimental guidance and the agents.md standard recommend a single authoritative file for agent instructions. This file:
 
-```bash
-# Start the dev server and redirect stdout/stderr to the project log file
-make dev > logs/server.log 2>&1 &
-```
+- Exposes critical project targets and tools.
+- Forces reproducible workflows through the Makefile.
+- Documents where to find external docs and how to query them (Tavily / Context7 / web).
 
-Run in the foreground (useful for debugging):
+## Quick rules (read first)
 
-```bash
-make dev
-# stop with Ctrl-C
-```
+- Always use the Makefile targets from the repository root. Prefer `make dev &` for iterative development.
+- When a Makefile target calls a tool, prefer using that tool via the target (e.g., `make build-container-local`) unless you need an advanced use-case.
+- For frontend PatternFly work, consult the repo's README and `.pf-ai-documentation` before generating UI code.
+- Avoid making network requests or exfiltrating secrets. Use provided kubeconfigs or test stubs.
 
-Stopping a backgrounded job
+## How AI agents should use this file
 
-Use shell job control to list and stop background jobs:
+This file follows the agents.md and VS Code recommendations. Agents should read the top metadata and honor `alwaysApply` rules. Useful metadata keys used here:
 
-```bash
-jobs            # list background jobs
-kill %1         # stop job number 1 (replace with the job id shown)
-# or find PID and kill: ps aux | grep 'make' | grep dev
-```
+- `description` — brief purpose for this AGENTS.md file.
+- `globs` — files the rules apply to.
+- `alwaysApply` — boolean; if true, the agent must enforce the rule.
 
-View logs (live):
+Agents should also:
 
-```bash
-tail -f logs/server.log
-```
+- Check the Makefile for canonical commands and map their internal tool invocations to high-level tasks listed below.
+- When external documentation is required, prefer structured, indexed sources first (Context7 / Tavily). If you must browse the web, cite URLs.
 
-Notes:
+## Makefile tool assignment
 
-- Always run Makefile targets from the repository root.
-- If you need to run a different Makefile target, prefer naming the target explicitly (for example `make test` or `make build`) rather than running the underlying commands by hand.
-- These instructions intentionally rely on standard shell job control so they work across macOS and Linux development environments.
+The project's Makefile defines the authoritative mapping from tasks to tools. Use these mappings when performing actions.
 
+- `make dev` → air (hot reload) — development server with live rebuilds and VM watcher. Prefer `make dev &` for background runs.
+- `make build` → `go build` — compile the Go binary `bin/summit-connect`.
+- `make test-go` → `go test -v ./...` — Go unit tests.
+- `make test-e2e` → builds, starts backend, then uses npm/Playwright to run e2e tests. Ensure Node/npm and Playwright browsers are installed.
+- `make test` → runs `test-go` then `test-e2e`.
+- `make tools` → installs dev tools locally into `bin/` (ko and air via `go install`). Use this to ensure `ko` and `air` are available.
+- `make build-container` / `make build-container-local` → ko (github.com/google/ko) — builds multi-arch container images. `build-container` pushes to IMAGE_REGISTRY, `build-container-local` produces `ko.local/...` images.
+- `make run-container` / `make stop-container` → podman (or Docker) — run images locally with mounts (`config`, `.kubeconfigs`). The Makefile uses `podman run`.
+- `make logs` → tail logs in `logs/server.log`.
+- `make start` / `make stop` / `make status` → run/stop the backend binary via pid files and `nohup`.
 
-description: Enforces PatternFly Vibe coding standards and documentation best practices for all PatternFly React code.
-globs: "**/*.{js,jsx,ts,tsx,css,scss}"
-alwaysApply: true
+Agents should not bypass these targets unless instructed by a human reviewer. When a human explicitly requests a different command, document why you're diverging.
+
+## Documentation queries (Tavily & Context7 guidance)
+
+When you need up-to-date documentation or package-specific docs:
+
+- Prefer Context7-style library docs (Context7-compatible IDs) if you need authoritative library docs for code generation — e.g., `mcp_upstash_conte_resolve-library-id` then `mcp_upstash_conte_get-library-docs` for deep API docs.
+- Use Tavily search for broad web searches and recent articles: it returns clean, relevant results (use `mcp_tavily_tavily-search`).
+- When you consult external docs, include the URL and the exact sections you used.
+
+Examples:
+
+- To find ko usage examples: query Context7 for `/google/ko` or use Tavily to search "google ko build --platform ko.local examples".
+- To find Playwright usage: Tavily or direct Playwright docs are acceptable.
+
+If your toolchain includes local wrappers for these services, prefer them over web searches.
+
+## Contract for automated edits
+
+- **Inputs**: Makefile target name, repository root path, optional flags (e.g. dev/background).
+- **Outputs**: Terminal output, modified files (if any), logs.
+- **Error modes**: missing binaries (ko/air/npm), missing kubeconfigs, container runtime missing, failing tests. When error occurs, stop and report clearly with reproduction steps.
+
+Edge cases to handle:
+
+- Node/npm not installed on host but required for e2e: detect and report, do not attempt to install globally.
+- podman not available: fall back to Docker where possible, but document the decision.
+- Insufficient permissions to write bin/ or install tools: report actionable steps (use `make tools` and set LOCALBIN or GOBIN accordingly).
+
+## Development workflow
+
+1. Install local tools: `make tools` (installs `ko` and `air` into `bin/` by default).
+2. Start dev server with hot reload in background:
+
+   ```bash
+   make dev &
+   ```
+
+3. Run Go unit tests frequently:
+
+   ```bash
+   make test-go
+   ```
+
+4. For UI or integration changes, run e2e:
+
+   ```bash
+   make test-e2e
+   ```
+
+5. Build local container for testing:
+
+   ```bash
+   make build-container-local
+   make run-container
+   ```
+
+6. Before committing:
+
+   ```bash
+   make test
+   make build
+   ```
+
+## PatternFly / Frontend guidance
+
+- Always consult the repo READMEs and `.pf-ai-documentation` before adding or modifying PatternFly components.
+- Prefer official PatternFly components over custom implementations. Watch for accessibility (a11y) and ARIA attributes.
+- Keep styling in `styles.css` or component-specific CSS and use CSS custom properties for theming.
+
+## Testing & CI guidance
+
+- Unit tests: `make test-go`.
+- E2E tests: `make test-e2e` (requires Node/npm and Playwright browsers). The Makefile handles npm install and Playwright install as needed.
+- CI pipelines should run `make test` and `make build-container` where appropriate.
+
+## Security and secrets
+
+- Never commit secrets to the repo. Use `.kubeconfigs` and mounted secrets for runtime.
+- Containers should run non-root where possible and use minimal base images.
+- Run vulnerability scans on built images (outside the Makefile steps) and keep dependencies updated.
+
+## Troubleshooting
+
+- **npm is required for e2e tests but not installed** — install Node.js locally, or run `make test-e2e` on a machine with Node/npm.
+- **Missing `ko` or `air`** — run `make tools` to install into `./bin` or set `LOCALBIN`/`GOBIN`.
+- **Podman missing** — switch to Docker or run container steps in a supported environment.
+- **Failing to start server in `make dev`** — view `logs/server.log` or run `make dev` in the foreground to inspect build errors.
+
+## Contributing
+
+- Create a feature branch from `main`.
+- Keep changes focused and add tests for behavior changes.
+- Run `make test` locally before opening a PR.
+- Use clear commit messages and reference issues when applicable.
+
+## References
+
+- VS Code: [Use an AGENTS.md file](https://code.visualstudio.com/docs/copilot/customization/custom-instructions#_use-an-agentsmd-file-experimental)
+- agents.md open standard: [agents.md](https://agents.md/)
+
 ---
 
-PatternFly Vibe Coding Rule
---------------------------
-
-Purpose
--------
-
-Always reference the README and markdown documentation in this repository when generating, editing, or reviewing any PatternFly (PF) code. These files contain the authoritative best practices, guidelines, and up-to-date standards for PatternFly development.
-
-Scope
------
-
-This rule applies to all code generation, refactoring, and review tasks involving PatternFly React, PatternFly Chatbot, and related UI components in this project.
-
-Documentation to Reference
--------------------------
-
-- The root `README.md`
-- The `.pf-ai-documentation/README.md` file, which serves as the table of contents for all documentation in the `.pf-ai-documentation/` directory and its subdirectories. Use this file to discover and navigate all relevant rules, guidelines, and best practices for PatternFly development.
-- All markdown files referenced by `.pf-ai-documentation/README.md`.
-
-Rule
-----
-
-- **Always consult the above documentation before generating or editing any PatternFly code.**
-- **Use the documented best practices for component usage, styling, accessibility, and layout.**
-- **Prefer semantic design tokens and utility classes as described in the docs.**
-- **Follow accessibility and ARIA guidelines from the documentation.**
-- **Reference official PatternFly components and avoid custom solutions unless explicitly allowed.**
-- **If a question arises, search these docs first before using external sources.**
-
-Example Prompt
---------------
-
-> "When generating PatternFly code, use the guidelines and examples from all README and markdown files in this repository, especially those referenced in documentation/README.md. Follow the documented best practices for styling, accessibility, and component usage."
-
-Enforcement
------------
-
-If code is generated or edited without following these documentation sources, request changes and point to the relevant section in the docs.
+Always prefer the Makefile. If you need me to expand or make the file stricter (for example adding enforced globs or additional metadata fields), tell me which rules you want to lock and I will update `AGENTS.md` accordingly.
 
