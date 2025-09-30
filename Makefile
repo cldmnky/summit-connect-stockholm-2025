@@ -41,7 +41,7 @@ help:
 
 build:
 	@echo "Building Go application..."
-	go build -o summit-connect
+	go build -o bin/summit-connect
 	@echo "Built summit-connect binary"
 
 test: test-go test-e2e
