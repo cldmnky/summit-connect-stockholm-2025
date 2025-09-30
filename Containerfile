@@ -25,7 +25,7 @@ LABEL MAINTAINER="Virt Corp <rhel@virt-corp.com>"
 COPY --from=builder /tmp/bin/summit-connect /usr/local/bin/summit-connect
 
 # Systemd service for the Summit Connect application
-COPY demo/summit-connect.service /etc/systemd/system/summit-connect.service
+COPY demo/bootc/summit-connect-app/summit-connect.service /etc/systemd/system/summit-connect.service
 RUN useradd -r -s /bin/false summit-connect && \
     chmod +x /usr/local/bin/summit-connect && \
     systemctl enable summit-connect
