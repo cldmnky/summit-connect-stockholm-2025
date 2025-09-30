@@ -26,16 +26,18 @@ COPY --from=builder /tmp/bin/summit-connect /usr/local/bin/summit-connect
 
 # Systemd service and mount units for the Summit Connect application
 COPY demo/bootc/summit-connect-app/summit-connect.service /etc/systemd/system/summit-connect.service
-COPY demo/bootc/summit-connect-app/etc-summit-connect-config.mount /etc/systemd/system/etc-summit-connect-config.mount
-COPY demo/bootc/summit-connect-app/etc-summit-connect-.kubeconfigs.mount /etc/systemd/system/etc-summit-connect-.kubeconfigs.mount
+COPY demo/bootc/summit-connect-app/config-mount.unit /tmp/config-mount.unit
+COPY demo/bootc/summit-connect-app/kubeconfigs-mount.unit /tmp/kubeconfigs-mount.unit
 
 # Create mount point directories and enable systemd units
 RUN chmod +x /usr/local/bin/summit-connect && \
     mkdir -p /etc/summit-connect/config && \
     mkdir -p /etc/summit-connect/.kubeconfigs && \
+    mv /tmp/config-mount.unit '/etc/systemd/system/etc\x2dsummit\x2dconnect\x2dconfig.mount' && \
+    mv /tmp/kubeconfigs-mount.unit '/etc/systemd/system/etc\x2dsummit\x2dconnect\x2d\x2ekubeconfigs.mount' && \
     systemctl enable summit-connect && \
-    systemctl enable etc-summit-connect-config.mount && \
-    systemctl enable etc-summit-connect-.kubeconfigs.mount
+    systemctl enable 'etc\x2dsummit\x2dconnect\x2dconfig.mount' && \
+    systemctl enable 'etc\x2dsummit\x2dconnect\x2d\x2ekubeconfigs.mount'
 
 # Runtime expectations when running inside a bootc VM or container:
 # - A Kubernetes Secret (or volume) containing `datacenters.yaml` will be mounted
