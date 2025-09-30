@@ -6,6 +6,8 @@ Wants=network.target
 [Service]
 Type=simple
 DynamicUser=yes
+ExecStartPre=+/usr/bin/systemd-mount /dev/disk/by-id/virtio-CONFIG /etc/summit-connect/config
+ExecStartPre=+/usr/bin/systemd-mount /dev/disk/by-id/virtio-KUBECONFIGS /etc/summit-connect/.kubeconfigs
 ExecStart=/usr/local/bin/summit-connect serve backend --port 3001 --config /etc/summit-connect/config/datacenters.yaml --watch-vms
 Restart=always
 RestartSec=5
