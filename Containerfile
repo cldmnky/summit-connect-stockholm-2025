@@ -26,8 +26,7 @@ COPY --from=builder /tmp/bin/summit-connect /usr/local/bin/summit-connect
 
 # Systemd service for the Summit Connect application
 COPY demo/bootc/summit-connect-app/summit-connect.service /etc/systemd/system/summit-connect.service
-RUN useradd -r -s /bin/false summit-connect && \
-    chmod +x /usr/local/bin/summit-connect && \
+RUN chmod +x /usr/local/bin/summit-connect && \
     systemctl enable summit-connect
 
 # Runtime expectations when running inside a bootc VM or container:
