@@ -105,6 +105,8 @@ fi
 
 echo -e "\033[36mUsing container CLI: $CLI\033[0m"
 echo -e "\033[33mBuilding \033[36m${CONTAINERFILE}\033[33m -> \033[32m${IMAGE}\033[0m"
+# pause for dramatic effect
+sleep 2
 
 # Build the image
 if [[ "$CLI" == "podman" ]]; then
@@ -148,11 +150,11 @@ if [[ "$DO_QCOW" == true ]]; then
 	OUTPUT_DIR="$SCRIPT_DIR/$QCOW_OUTPUT_DIR"
 	mkdir -p "$OUTPUT_DIR"
 
-	echo "Make sure you're logged into the registries if they require authentication:"
-	echo "  podman login quay.io"
-	echo "  podman login registry.redhat.io"
+	echo -e "\033[33mMake sure you're logged into the registries if they require authentication:\033[0m"
+	echo -e "  \033[36mpodman login quay.io\033[0m"
+	echo -e "  \033[36mpodman login registry.redhat.io\033[0m"
 
-	echo "Running bootc image builder... output will be written to: $OUTPUT_DIR"
+	echo -e "\033[35mRunning bootc image builder...\033[33m output will be written to: \033[32m$OUTPUT_DIR\033[0m"
 
 	# Ensure root's podman store has the image (the builder runs under sudo)
 	if ! sudo podman image exists "$IMAGE" >/dev/null 2>&1; then
@@ -173,7 +175,10 @@ if [[ "$DO_QCOW" == true ]]; then
 		-v /var/lib/containers/storage:/var/lib/containers/storage \
 		"$BUILDER" --type qcow2 "$IMAGE")
 
-	echo "Command: ${cmd[*]}"
+	echo -e "\033[34mCommand: \033[36m${cmd[*]}\033[0m"
+	# sleep for dramatic effect
+	sleep 2
+	# Run the command
 	"${cmd[@]}"
 
 	echo "Builder finished. Check $OUTPUT_DIR for the generated qcow2 file(s)."
