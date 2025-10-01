@@ -193,7 +193,7 @@ if [[ "$DO_QCOW" == true ]]; then
 				QCOW_IMAGE_TAG="$QCOW_IMAGE"
 			fi
 
-			echo "Found Containerfile.qcow2; building qcow container image -> $QCOW_IMAGE_TAG"
+			echo -e "\033[32mFound Containerfile.qcow2; \033[33mbuilding qcow container image \033[33m-> \033[36m$QCOW_IMAGE_TAG\033[0m"
 			# Build context should be the script dir so the Containerfile.qcow2 can reference files in output/
 			# Ensure the qcow file the Containerfile expects is present in the build context.
 			QCOW_SRC="$OUTPUT_DIR/qcow2/disk.qcow2"
@@ -208,6 +208,10 @@ if [[ "$DO_QCOW" == true ]]; then
 			fi
 			pushd "$SCRIPT_DIR" >/dev/null
 			if [[ "$CLI" == "podman" ]]; then
+				echo -e "\033[34mCommand: \033[36mpodman build -f Containerfile.qcow2 -t $QCOW_IMAGE_TAG .\033[0m"
+				# pause for dramatic effect
+				sleep 2
+				# Build the image
 				$CLI build -f Containerfile.qcow2 -t "$QCOW_IMAGE_TAG" .
 			else
 				$CLI build -f Containerfile.qcow2 -t "$QCOW_IMAGE_TAG" .
@@ -225,6 +229,10 @@ if [[ "$DO_QCOW" == true ]]; then
 				push_attempts=0
 				until [[ $push_attempts -ge $RETRIES ]]; do
 					set +e
+					# Add colors and echo command
+					echo -e "\033[34mCommand: \033[36m$CLI push $QCOW_IMAGE_TAG\033[0m"
+					# pause for dramatic effect
+					sleep 2
 					$CLI push "$QCOW_IMAGE_TAG"
 					rc=$?
 					set -e
