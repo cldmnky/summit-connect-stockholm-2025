@@ -10,6 +10,7 @@ CONTAINERFILE="Containerfile.bootc"
 RETRIES=3
 BUILDER_DEFAULT="registry.redhat.io/rhel10/bootc-image-builder:latest"
 QCOW_OUTPUT_DIR="output"
+SLEEP_TIME=2
 
 usage() {
 	cat <<EOF
@@ -26,6 +27,7 @@ Options:
 	--builder <image>    Use this bootc builder image (default: $BUILDER_DEFAULT)
 	--output <dir>       Output directory for qcow (default: $QCOW_OUTPUT_DIR)
 	--retries <N>        Number of push retries (default: $RETRIES)
+	--sleep <N>          Sleep time in seconds for dramatic pauses (default: $SLEEP_TIME)
 
 Examples:
 	# build, push, then create qcow2
@@ -70,6 +72,9 @@ while [[ $# -gt 0 ]]; do
 		--retries)
 			RETRIES="$2"; shift 2
 			;;
+		--sleep)
+			SLEEP_TIME="$2"; shift 2
+			;;
 		--)
 			shift; break
 			;;
@@ -106,7 +111,7 @@ fi
 echo -e "\033[36mUsing container CLI: $CLI\033[0m"
 echo -e "\033[33mBuilding \033[36m${CONTAINERFILE}\033[33m -> \033[32m${IMAGE}\033[0m"
 # pause for dramatic effect
-sleep 16
+sleep $SLEEP_TIME
 
 # Build the image
 if [[ "$CLI" == "podman" ]]; then
@@ -177,7 +182,7 @@ if [[ "$DO_QCOW" == true ]]; then
 
 	echo -e "\033[34mCommand: \033[36m${cmd[*]}\033[0m"
 	# sleep for dramatic effect
-	sleep 16
+	sleep $SLEEP_TIME
 	# Run the command
 	"${cmd[@]}"
 
@@ -210,7 +215,7 @@ if [[ "$DO_QCOW" == true ]]; then
 			if [[ "$CLI" == "podman" ]]; then
 				echo -e "\033[34mCommand: \033[36mpodman build -f Containerfile.qcow2 -t $QCOW_IMAGE_TAG .\033[0m"
 				# pause for dramatic effect
-				sleep 16
+				sleep $SLEEP_TIME
 				# Build the image
 				$CLI build -f Containerfile.qcow2 -t "$QCOW_IMAGE_TAG" .
 			else
@@ -232,7 +237,7 @@ if [[ "$DO_QCOW" == true ]]; then
 					# Add colors and echo command
 					echo -e "\033[34mCommand: \033[36m$CLI push $QCOW_IMAGE_TAG\033[0m"
 					# pause for dramatic effect
-					sleep 16
+					sleep $SLEEP_TIME
 					$CLI push "$QCOW_IMAGE_TAG"
 					rc=$?
 					set -e
