@@ -38,4 +38,4 @@ DEMO_PROMPT="${GREEN}[\u@\h \W]$ ${COLOR_RESET}"
 # DEMO_CMD_COLOR=$BLACK
 
 pe cd summit-connect-stockholm-2025/demo/bootc/summit-connect-base/
-p ""
+pe "./build-and-push.sh --qcow"

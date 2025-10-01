@@ -106,7 +106,7 @@ fi
 echo -e "\033[36mUsing container CLI: $CLI\033[0m"
 echo -e "\033[33mBuilding \033[36m${CONTAINERFILE}\033[33m -> \033[32m${IMAGE}\033[0m"
 # pause for dramatic effect
-sleep 2
+sleep 16
 
 # Build the image
 if [[ "$CLI" == "podman" ]]; then
@@ -177,7 +177,7 @@ if [[ "$DO_QCOW" == true ]]; then
 
 	echo -e "\033[34mCommand: \033[36m${cmd[*]}\033[0m"
 	# sleep for dramatic effect
-	sleep 2
+	sleep 16
 	# Run the command
 	"${cmd[@]}"
 
@@ -200,7 +200,7 @@ if [[ "$DO_QCOW" == true ]]; then
 			QCOW_DST="$SCRIPT_DIR/disk.qcow2"
 			CLEANUP_QCOW=false
 			if [[ -f "$QCOW_SRC" ]]; then
-				echo "Copying $QCOW_SRC -> $QCOW_DST for build context"
+				echo -e "\033[33mCopying \033[36m$QCOW_SRC\033[33m -> \033[32m$QCOW_DST\033[33m for build context\033[0m"
 				cp -f "$QCOW_SRC" "$QCOW_DST"
 				CLEANUP_QCOW=true
 			else
@@ -210,7 +210,7 @@ if [[ "$DO_QCOW" == true ]]; then
 			if [[ "$CLI" == "podman" ]]; then
 				echo -e "\033[34mCommand: \033[36mpodman build -f Containerfile.qcow2 -t $QCOW_IMAGE_TAG .\033[0m"
 				# pause for dramatic effect
-				sleep 2
+				sleep 16
 				# Build the image
 				$CLI build -f Containerfile.qcow2 -t "$QCOW_IMAGE_TAG" .
 			else
@@ -232,7 +232,7 @@ if [[ "$DO_QCOW" == true ]]; then
 					# Add colors and echo command
 					echo -e "\033[34mCommand: \033[36m$CLI push $QCOW_IMAGE_TAG\033[0m"
 					# pause for dramatic effect
-					sleep 2
+					sleep 16
 					$CLI push "$QCOW_IMAGE_TAG"
 					rc=$?
 					set -e
