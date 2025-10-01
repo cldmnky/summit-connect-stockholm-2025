@@ -103,8 +103,8 @@ else
 	exit 3
 fi
 
-echo "Using container CLI: $CLI"
-echo "Building ${CONTAINERFILE} -> ${IMAGE}"
+echo -e "\033[36mUsing container CLI: $CLI\033[0m"
+echo -e "\033[33mBuilding \033[36m${CONTAINERFILE}\033[33m -> \033[32m${IMAGE}\033[0m"
 
 # Build the image
 if [[ "$CLI" == "podman" ]]; then
