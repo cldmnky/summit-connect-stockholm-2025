@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: shipwright-builder-secret-access
-  namespace: summit-connect-demo
+  namespace: summit-connect
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -13,11 +13,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: shipwright-builder-secret-access-binding
-  namespace: summit-connect-demo
+  namespace: summit-connect
 subjects:
   - kind: ServiceAccount
     name: shipwright-builder
-    namespace: summit-connect-demo
+    namespace: summit-connect
 roleRef:
   kind: Role
   name: shipwright-builder-secret-access

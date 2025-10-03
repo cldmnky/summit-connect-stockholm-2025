@@ -1,0 +1,61 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.1.2 Chrome/138.0.7204.243 Electron/37.4.0 Safari/537.36" version="28.1.2">
+  <diagram name="Summit Connect Demo Flow" id="demo-flow">
+    <mxGraphModel dx="1685" dy="813" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="light-dark(#000000, #121212)" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="start" value="🚀 Bootc Demo&#xa;RHEL + Containers + VMs" style="ellipse;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;fillStyle=hachure;" parent="1" vertex="1">
+          <mxGeometry x="10" y="440" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="baseimage" value="🏗️ Create Base Image&#xa;RHEL 10 Bootable Container&#xa;• Standard OCI Image&#xa;• Bootable qcow2 Disk" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="240" y="430" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="appimage" value="📱 Build Application Image&#xa;Node.js App on Base Image&#xa;• Local container test&#xa;• OpenShift build &amp;amp; push" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;fillStyle=auto;" parent="1" vertex="1">
+          <mxGeometry x="480" y="430" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="vmdeploy" value="🚀 Deploy VM on OpenShift&#xa;KubeVirt Virtual Machine&#xa;• Helm chart deployment&#xa;• Boot with base image" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="720" y="430" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="bootcswitch" value="🔄 Bootc Image Switch&#xa;Ansible Automation Platform&#xa;• Detect new VM&#xa;• Switch to app image&#xa;• Reboot VM" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="960" y="420" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="result" value="✅ Application Running&#xa;VM with Node.js App&#xa;• Immutable OS&#xa;• Container-like deployment&#xa;• VM security &amp;amp; isolation" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="500" y="580" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="end" value="🎯 Demo Complete&#xa;Best of Both Worlds!" style="ellipse;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="500" y="730" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;fontColor=#FFFFFF;strokeColor=#FBFBFB;" parent="1" source="start" target="baseimage" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;fontColor=#FFFFFF;strokeColor=#FFFFFF;" parent="1" source="baseimage" target="appimage" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;strokeWidth=2;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;fontColor=#FFFFFF;strokeColor=#FFFFFF;" parent="1" source="appimage" target="vmdeploy" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;fontColor=#FFFFFF;strokeColor=#FFFFFF;" parent="1" source="vmdeploy" target="bootcswitch" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;fontColor=#FFFFFF;" parent="1" source="bootcswitch" target="result" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;fontColor=#FFFFFF;" parent="1" source="result" target="end" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="benefit1" value="💡 Key Benefits" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=17;fontStyle=1;fontColor=#FFFFFF;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="80" y="200" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="benefit2" value="🔒 VM Security&#xa;📦 Container Agility&#xa;🎯 Immutable OS&#xa;⚡ Fast Updates&#xa;🔄 Easy Rollbacks" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=17;fontColor=#FFFFFF;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="80" y="240" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="tech1" value="🛠️ Technologies" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=17;fontStyle=1;fontColor=#FFFFFF;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="750" y="200" width="210" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tech2" value="🎩 RHEL 10&#xa;👢 Bootc&#xa;☸️ OpenShift&#xa;🚀 KubeVirt&#xa;🤖 Ansible AAP&#xa;📊 Helm Charts" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=17;fontColor=#FFFFFF;fontFamily=Indie Flower;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="750" y="250" width="210" height="140" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

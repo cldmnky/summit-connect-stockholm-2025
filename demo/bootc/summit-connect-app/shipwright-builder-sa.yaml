@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: shipwright-builder
-  namespace: summit-connect-demo
+  namespace: summit-connect
 secrets:
   - name: quay-push-secret
 imagePullSecrets:

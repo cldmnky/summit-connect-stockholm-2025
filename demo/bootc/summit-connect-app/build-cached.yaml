@@ -1,0 +1,23 @@
+apiVersion: shipwright.io/v1beta1
+kind: Build
+metadata:
+  name: summit-connect-app-cached
+  namespace: summit-connect
+spec:
+  source:
+    type: Git
+    git:
+      url: https://github.com/cldmnky/summit-connect-stockholm-2025.git
+      revision: main
+    contextDir: .
+  strategy:
+    name: buildah
+    kind: ClusterBuildStrategy
+  paramValues:
+    - name: dockerfile
+      value: Containerfile.cached  # Use cached version
+    - name: storage-driver
+      value: vfs  # OpenShift compatible storage driver
+  output:
+    image: quay.io/cldmnky/summit-connect-app:cached
+    pushSecret: quay-push-secret

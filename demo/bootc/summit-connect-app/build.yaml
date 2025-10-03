@@ -1,7 +1,7 @@
 apiVersion: shipwright.io/v1beta1
 kind: Build
 metadata:
-  namespace: summit-connect-demo
+  namespace: summit-connect
   name: summit-connect-app
 spec:
   output:
@@ -10,7 +10,7 @@ spec:
   source:
     git:
       url: 'https://github.com/cldmnky/summit-connect-stockholm-2025.git'
-      revision: 'feature/demo'
+      revision: 'main'
     contextDir: '.'
     type: Git
   strategy:

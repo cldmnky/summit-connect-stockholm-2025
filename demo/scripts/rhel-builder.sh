@@ -37,5 +37,5 @@ DEMO_PROMPT="${GREEN}[\u@\h \W]$ ${COLOR_RESET}"
 # text color
 # DEMO_CMD_COLOR=$BLACK
 
-pe cd summit-connect-stockholm-2025/demo/bootc/summit-connect-base/
-pe "./build-and-push.sh --qcow"
+pei "cd summit-connect-stockholm-2025/demo/bootc/summit-connect-base/"
+pei "./build-and-push.sh --qcow --sleep 16"
