@@ -15,7 +15,7 @@ spec:
     kind: ClusterBuildStrategy
   paramValues:
     - name: dockerfile
-      value: Containerfile.vendored  # Use vendored Containerfile for fastest builds
+      value: Containerfile.cached  # Use vendored Containerfile for fastest builds
     - name: storage-driver
       value: vfs  # OpenShift compatible storage driver
   output:
