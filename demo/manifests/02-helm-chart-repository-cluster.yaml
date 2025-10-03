@@ -1,0 +1,22 @@
+---
+# This is a cluster-scoped Helm Chart Repository that makes the Summit Connect
+# charts available to all namespaces in the OpenShift cluster.
+# Use this instead of the ProjectHelmChartRepository if you want cluster-wide access.
+apiVersion: helm.openshift.io/v1beta1
+kind: HelmChartRepository
+metadata:
+  name: summit-connect-helm-repo-cluster
+spec:
+  # Display name for the repository in the OpenShift console
+  name: "Summit Connect Stockholm 2025"
+  
+  # Description that will appear in the Developer Catalog
+  description: "Helm charts for Summit Connect Stockholm 2025 demo application including KubeVirt VMs with bootc pivot functionality"
+  
+  # Configuration for connecting to the Helm repository  
+  connectionConfig:
+    # URL pointing to our GitHub Pages hosted Helm repository
+    url: https://cldmnky.github.io/summit-connect-stockholm-2025/
+  
+  # Optional: Set to false to ensure the repository is enabled (default is false)
+  disabled: false
