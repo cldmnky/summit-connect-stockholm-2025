@@ -6,8 +6,8 @@
 vm:
   # Enable VM deployment
   enabled: true
-  # VM name (will be templated with release name)
-  name: summit-connect-app
+  # VM name (leave empty to use release name, or specify custom name)
+  name: ""
   # VM namespace
   namespace: summit-connect
   # Run strategy for the VM

@@ -53,6 +53,17 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 
 {{/*
+Generate VM name based on values or release name
+*/}}
+{{- define "summit-connect.vmName" -}}
+{{- if empty .Values.vm.name -}}
+{{- include "summit-connect.fullname" . -}}
+{{- else -}}
+{{- .Values.vm.name -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Generate a unique MAC address based on release name and namespace
 This creates a deterministic but unique MAC address for each deployment
 */}}

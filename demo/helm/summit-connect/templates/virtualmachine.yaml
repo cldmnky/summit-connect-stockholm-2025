@@ -2,16 +2,16 @@
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
-  name: {{ .Values.vm.name | default (include "summit-connect.fullname" .) }}
+  name: {{ include "summit-connect.vmName" . }}
   namespace: {{ .Values.vm.namespace | default .Release.Namespace }}
   labels:
     {{- include "summit-connect.labels" . | nindent 4 }}
-    app: {{ .Values.vm.name | default (include "summit-connect.fullname" .) }}
+    app: {{ include "summit-connect.vmName" . }}
 spec:
   dataVolumeTemplates:
     - metadata:
         creationTimestamp: null
-        name: {{ printf "%s-volume" (.Values.vm.name | default (include "summit-connect.fullname" .)) }}
+        name: {{ printf "%s-volume" (include "summit-connect.vmName" .) }}
         {{- with .Values.dataVolumeTemplate.annotations }}
         annotations:
           {{- toYaml . | nindent 10 }}
@@ -81,7 +81,7 @@ spec:
       subdomain: {{ .Values.service.name | default (printf "%s-headless" (include "summit-connect.fullname" .)) }}
       volumes:
         - dataVolume:
-            name: {{ printf "%s-volume" (.Values.vm.name | default (include "summit-connect.fullname" .)) }}
+            name: {{ printf "%s-volume" (include "summit-connect.vmName" .) }}
           name: rootdisk
         - cloudInitNoCloud:
             userData: |
