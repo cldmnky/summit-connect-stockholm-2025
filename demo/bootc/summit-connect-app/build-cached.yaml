@@ -15,7 +15,7 @@ spec:
     kind: ClusterBuildStrategy
   paramValues:
     - name: dockerfile
-      value: Containerfile.cached  # Use simple Containerfile that builds only main.go
+      value: Containerfile.vendored  # Use vendored Containerfile for fastest builds
     - name: storage-driver
       value: vfs  # OpenShift compatible storage driver
   output:

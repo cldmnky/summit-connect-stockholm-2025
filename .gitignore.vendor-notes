@@ -1,0 +1,18 @@
+# Vendor directory management options:
+# 
+# Option 1: Include vendor/ in git (recommended for containerized builds)
+# - Faster builds (no network downloads)
+# - Reproducible builds 
+# - Larger repo size (+67MB)
+# - Uncomment the line below to exclude vendor/ if you prefer smaller repo
+# 
+# vendor/
+
+# Option 2: Exclude vendor/ from git (traditional approach)
+# - Smaller repo size
+# - Requires network access during builds
+# - Potentially slower builds
+# - Comment out vendor/ above if using this approach
+
+# For vendored builds, ensure modules.txt is included
+# !vendor/modules.txt
