@@ -1,0 +1,26 @@
+{{- if .Values.vm.enabled }}
+Summit Connect Virtual Machine has been deployed!
+
+To check the VM status:
+  kubectl get vm {{ .Values.vm.name | default (include "summit-connect.fullname" .) }} -n {{ .Values.vm.namespace | default .Release.Namespace }}
+
+To get the VM instance status:
+  kubectl get vmi {{ .Values.vm.name | default (include "summit-connect.fullname" .) }} -n {{ .Values.vm.namespace | default .Release.Namespace }}
+
+To access the VM via console:
+  virtctl console {{ .Values.vm.name | default (include "summit-connect.fullname" .) }} -n {{ .Values.vm.namespace | default .Release.Namespace }}
+
+To SSH into the VM (once it's running):
+  virtctl ssh rhel@{{ .Values.vm.name | default (include "summit-connect.fullname" .) }} -n {{ .Values.vm.namespace | default .Release.Namespace }}
+
+{{- if and .Values.service.createRegularService .Values.route.enabled }}
+
+To access the Summit Connect application:
+  {{- if .Values.route.host }}
+  Application URL: {{ if .Values.route.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.route.host }}
+  {{- else }}
+  Get the route URL: oc get route {{ include "summit-connect.fullname" . }}-app -n {{ .Values.vm.namespace | default .Release.Namespace }} -o jsonpath='{.spec.host}'
+  {{- end }}
+{{- end }}
+
+{{- end }}

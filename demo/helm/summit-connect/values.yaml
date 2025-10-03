@@ -1,0 +1,139 @@
+# Default values for summit-connect.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Virtual Machine Configuration
+vm:
+  # Enable VM deployment
+  enabled: true
+  # VM name (will be templated with release name)
+  name: summit-connect-app
+  # VM namespace
+  namespace: summit-connect
+  # Run strategy for the VM
+  runStrategy: Always
+# Data Volume Template Configuration
+dataVolumeTemplate:
+  # NOTE: generateName was removed from the chart templates in favor of a
+  # deterministic metadata.name for DataVolumeTemplate. This allows the
+  # DataVolume to be referenced reliably from spec.volumes. If you need a
+  # custom name, set `vm.name` when installing the chart or override the
+  # template.
+  # Create DataSource (set to false if it already exists)
+  createDataSource: false
+  # Source image for the DataSource (matches your DataImportCron)
+  sourceImage: docker://quay.io/cldmnky/summit-connect-base:qcow2
+  # DataSource annotations (for CDI import configuration)
+  annotations:
+    cdi.kubevirt.io/storage.bind.immediate.requested: "true"
+    cdi.kubevirt.io/storage.import.storageClass: lvms-vg1
+  # Source DataSource configuration
+  sourceRef:
+    kind: DataSource
+    name: summit-connect-base
+    namespace: summit-connect
+  # Storage configuration
+  storage:
+    resources:
+      requests:
+        storage: 30Gi
+    storageClassName: lvms-vg1
+# DataImportCron Configuration (for automatic image updates)
+dataImportCron:
+  # Enable DataImportCron creation (set to false if it already exists)
+  enabled: false
+  # DataImportCron name (auto-generated if empty)
+  name: ""
+  # Cron schedule (weekly on Tuesday at midnight)
+  schedule: "0 0 * * 2"
+  # Garbage collection policy
+  garbageCollect: Outdated
+  # Number of imports to keep
+  importsToKeep: 3
+  # Annotations
+  annotations:
+    cdi.kubevirt.io/storage.bind.immediate.requested: "true"
+# Instance Type and Preference
+instanceType:
+  kind: virtualmachineclusterinstancetype
+  name: u1.2xmedium
+preference:
+  kind: virtualmachineclusterpreference
+  name: rhel.10
+# Network Configuration
+network:
+  # MAC address for the VM (if not specified, will be auto-generated based on release name)
+  macAddress: ""
+  # The chart now uses the Kubernetes pod network with masquerade by default.
+  # The old `multusNetworkName` value has been removed; if you need Multus
+  # networking please re-add the value and update the templates accordingly.
+  # multusNetworkName: default/vlan201
+# Service Configuration for VM application
+service:
+  # Service name (defaults to "headless")
+  name: ""
+  # Application port (Summit Connect runs on 3001)
+  port: 3001
+  # Create regular ClusterIP service for ingress/routes (in addition to headless service)
+  createRegularService: true
+# OpenShift Route Configuration
+route:
+  # Enable OpenShift Route creation
+  enabled: true
+  # Route hostname (if empty, OpenShift will generate one)
+  host: ""
+  # Route annotations
+  annotations: {}
+  # TLS configuration
+  tls:
+    # Enable TLS
+    enabled: true
+    # TLS termination type (edge, passthrough, reencrypt)
+    termination: edge
+    # Insecure edge termination policy (Allow, Disable, Redirect)
+    insecureEdgeTerminationPolicy: Redirect
+# SSH Access Configuration
+sshAccess:
+  # Secret containing SSH public key
+  secretName: ssh-key
+  # Whether to create the SSH secret (recommended to create externally)
+  createSecret: false
+# Cloud-init configuration
+cloudInit:
+  # Default password for rhel user
+  password: sadg-sd7f-jumv
+  # Registration commands (can be overridden)
+  # Example: subscription-manager register --org=YOUR_ORG --activationkey=YOUR_KEY
+  runcmd: []
+# Secrets for volumes
+secrets:
+  # Config secret name
+  configSecretName: summit-connect-app-config
+  # Whether to create the config secret (recommended to create externally)
+  createConfigSecret: false
+  # Kubeconfigs secret name
+  kubeconfigsSecretName: summit-connect-kubeconfigs
+  # Whether to create the kubeconfigs secret (recommended to create externally)
+  createKubeconfigsSecret: false
+# Bootc Pivot Configuration
+bootcPivot:
+  # Enable bootc pivot functionality (set to true to enable pivot on first boot)
+  enabled: true
+  # Target application image to pivot to
+  targetImage: "quay.io/cldmnky/summit-connect-app:latest"
+  # Registry authentication configuration
+  registryAuth:
+    # Whether to create the auth.json file for private registry access
+    createAuthFile: false
+    # Content of the auth.json file (base64 encoded credentials)
+    authJson: |
+      {
+        "auths": {
+          "quay.io": {
+            "auth": "your-base64-encoded-auth-token"
+          }
+        }
+      }
+# Chart naming overrides
+nameOverride: ""
+fullnameOverride: ""

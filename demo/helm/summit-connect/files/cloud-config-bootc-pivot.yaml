@@ -1,0 +1,35 @@
+#cloud-config
+write_files:
+  - path: /etc/systemd/system/bootc-pivot.service
+    permissions: '0644'
+    owner: root:root
+    content: |
+      [Unit]
+      Description=Pivot to Derived bootc Image on First Boot
+      Documentation=man:bootc-switch(1) man:systemd.unit(5)
+      # Use custom condition since ConditionFirstBoot=true doesn't work with bootc images
+      ConditionPathExists=!/var/lib/bootc-pivot-done
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=/usr/bin/sh -c 'echo "Starting bootc pivot to {{ .Values.bootcPivot.targetImage }}..." | systemd-cat -p info -t bootc-pivot'
+      ExecStart=/usr/bin/bootc switch --apply {{ .Values.bootcPivot.targetImage }}
+      # Create marker file to prevent re-execution (this will persist across bootc switch due to /var preservation)
+      ExecStartPost=/usr/bin/touch /var/lib/bootc-pivot-done
+      ExecStartPost=/usr/bin/sh -c 'echo "bootc pivot completed successfully" | systemd-cat -p info -t bootc-pivot'
+
+      [Install]
+      WantedBy=multi-user.target
+
+chpasswd:
+  expire: false
+password: {{ .Values.cloudInit.password }}
+user: rhel
+
+runcmd:
+  - ['sh', '-c', 'echo "Enabling one-shot systemd bootc-pivot service..." | systemd-cat -p info -t bootc-pivot-setup']
+  - ['systemctl', 'daemon-reload']
+  - ['systemctl', 'enable', 'bootc-pivot.service']
+  - ['systemctl', 'start', 'bootc-pivot.service']

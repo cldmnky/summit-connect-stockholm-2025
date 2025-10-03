@@ -1,0 +1,25 @@
+{{- if .Values.vm.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "summit-connect.fullname" . }}-test-vm"
+  labels:
+    {{- include "summit-connect.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: kubectl
+      image: bitnami/kubectl:latest
+      command: ['kubectl']
+      args: 
+        - 'get'
+        - 'vm'
+        - '{{ .Values.vm.name | default (include "summit-connect.fullname" .) }}'
+        - '-n'
+        - '{{ .Values.vm.namespace | default .Release.Namespace }}'
+        - '-o'
+        - 'jsonpath={.status.printableStatus}'
+  restartPolicy: Never
+  serviceAccountName: {{ include "summit-connect.fullname" . }}-test
+{{- end }}

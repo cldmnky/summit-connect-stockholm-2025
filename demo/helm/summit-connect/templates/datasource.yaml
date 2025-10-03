@@ -1,0 +1,17 @@
+{{- if and .Values.vm.enabled .Values.dataVolumeTemplate.createDataSource }}
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataSource
+metadata:
+  name: {{ .Values.dataVolumeTemplate.sourceRef.name }}
+  namespace: {{ .Values.dataVolumeTemplate.sourceRef.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "summit-connect.labels" . | nindent 4 }}
+  {{- with .Values.dataVolumeTemplate.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  source:
+    registry:
+      url: {{ .Values.dataVolumeTemplate.sourceImage | quote }}
+{{- end }}

@@ -1,0 +1,110 @@
+{{- if .Values.vm.enabled }}
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: {{ .Values.vm.name | default (include "summit-connect.fullname" .) }}
+  namespace: {{ .Values.vm.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "summit-connect.labels" . | nindent 4 }}
+    app: {{ .Values.vm.name | default (include "summit-connect.fullname" .) }}
+spec:
+  dataVolumeTemplates:
+    - metadata:
+        creationTimestamp: null
+        name: {{ printf "%s-volume" (.Values.vm.name | default (include "summit-connect.fullname" .)) }}
+        {{- with .Values.dataVolumeTemplate.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        source:
+          registry:
+            url: {{ .Values.dataVolumeTemplate.sourceImage | quote }}
+        storage:
+          resources:
+            requests:
+              storage: {{ .Values.dataVolumeTemplate.storage.resources.requests.storage }}
+          storageClassName: {{ .Values.dataVolumeTemplate.storage.storageClassName }}
+  instancetype:
+    kind: {{ .Values.instanceType.kind }}
+    name: {{ .Values.instanceType.name }}
+  preference:
+    kind: {{ .Values.preference.kind }}
+    name: {{ .Values.preference.name }}
+  runStrategy: {{ .Values.vm.runStrategy }}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        {{- include "summit-connect.selectorLabels" . | nindent 8 }}
+        network.kubevirt.io/headlessService: {{ .Values.service.name | default (printf "%s-headless" (include "summit-connect.fullname" .)) }}
+    spec:
+      accessCredentials:
+        - sshPublicKey:
+            propagationMethod:
+              noCloud: {}
+            source:
+              secret:
+                secretName: {{ .Values.sshAccess.secretName }}
+      architecture: amd64
+      domain:
+        devices:
+          autoattachPodInterface: false
+          disks:
+            - disk:
+                bus: virtio
+              name: config
+              serial: CONFIG
+            - disk:
+                bus: virtio
+              name: kubeconfigs
+              serial: KUBECONFIGS
+          interfaces:
+            # Use a standard pod-network interface with masquerade (NAT) mode.
+            # This replaces the previous Multus VLAN/bridge interface so the VM
+            # is reachable via the cluster pod network and performs IP masquerading.
+            # Documentation references: tvily, context9
+            - masquerade: {}
+              macAddress: {{ include "summit-connect.macAddress" . | quote }}
+              model: virtio
+              name: default
+              state: up
+        machine:
+          type: pc-q35-rhel9.6.0
+        resources: {}
+      # Use the Kubernetes pod network for this VM. The interface above uses
+      # 'masquerade', which provides NATed access through the node's network.
+      # Documentation references: tvily, context9
+      networks:
+        - name: default
+          pod: {}
+      subdomain: {{ .Values.service.name | default (printf "%s-headless" (include "summit-connect.fullname" .)) }}
+      volumes:
+        - dataVolume:
+            name: {{ printf "%s-volume" (.Values.vm.name | default (include "summit-connect.fullname" .)) }}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |
+              {{- if .Values.bootcPivot.enabled }}
+              {{- tpl (.Files.Get "files/cloud-config-bootc-pivot.yaml") . | nindent 14 }}
+              {{- else }}
+              #cloud-config
+              chpasswd:
+                expire: false
+              password: {{ .Values.cloudInit.password }}
+              user: rhel
+              {{- if .Values.cloudInit.runcmd }}
+              runcmd:
+                {{- range .Values.cloudInit.runcmd }}
+                - {{ . | quote }}
+                {{- end }}
+              {{- end }}
+              {{- end }}
+          name: cloudinitdisk
+        - name: config
+          secret:
+            secretName: {{ .Values.secrets.configSecretName }}
+        - name: kubeconfigs
+          secret:
+            secretName: {{ .Values.secrets.kubeconfigsSecretName }}
+{{- end }}

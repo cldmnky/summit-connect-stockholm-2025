@@ -1,0 +1,18 @@
+datacenters:
+  - id: dc-sollentuna
+    name: "Stockholm Sollentuna DC"
+    location: "Sollentuna, Stockholm"
+    coordinates: [59.41966666666667, 17.94661111111111]
+    clusters:
+    - name: coruscant
+      kubeconfig: /etc/summit-connect/.kubeconfigs/coruscant.yaml # Relative to the working directory
+  - id: dc-solna
+    name: "Stockholm Solna DC"
+    location: "Järvastaden, Solna"
+    coordinates: [59.38162465568805, 17.98030981149373]
+    clusters:
+    - name: vulcan
+      kubeconfig: /etc/summit-connect/.kubeconfigs/vulcan.yaml # Relative to the working directory
+    - name: borg
+      kubeconfig: ./etc/summit-connect/.kubeconfigs/borg.yaml # Relative to the working directory
+

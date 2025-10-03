@@ -1,0 +1,21 @@
+{{- if and .Values.vm.enabled .Values.service.createRegularService }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "summit-connect.fullname" . }}-app
+  namespace: {{ .Values.vm.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "summit-connect.labels" . | nindent 4 }}
+    app.kubernetes.io/component: application
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "summit-connect.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+  # This Service exposes the VM application port (default 3001) so an OpenShift
+  # Route can forward traffic to it. See tvily/context7 for documentation.
+{{- end }}

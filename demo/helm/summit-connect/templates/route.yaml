@@ -1,0 +1,38 @@
+{{- if and .Values.vm.enabled .Values.route.enabled .Values.service.createRegularService }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "summit-connect.fullname" . }}-app
+  namespace: {{ .Values.vm.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "summit-connect.labels" . | nindent 4 }}
+  {{- with .Values.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.route.host }}
+  host: {{ .Values.route.host }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "summit-connect.fullname" . }}-app
+    weight: 100
+  # Expose the VM application port via the Service. Use the numeric port to
+  # ensure compatibility with OpenShift Route port resolution.
+  # Documentation references: tvily, context7
+  port:
+    targetPort: {{ .Values.service.port }}
+  {{- if .Values.route.tls.enabled }}
+  tls:
+    {{- if .Values.route.tls.termination }}
+    termination: {{ .Values.route.tls.termination }}
+    {{- else }}
+    termination: edge
+    {{- end }}
+    {{- if .Values.route.tls.insecureEdgeTerminationPolicy }}
+    insecureEdgeTerminationPolicy: {{ .Values.route.tls.insecureEdgeTerminationPolicy }}
+    {{- end }}
+  {{- end }}
+  wildcardPolicy: None
+{{- end }}

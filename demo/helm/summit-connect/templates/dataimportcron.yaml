@@ -1,0 +1,34 @@
+{{- if and .Values.vm.enabled .Values.dataImportCron.enabled }}
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataImportCron
+metadata:
+  name: {{ .Values.dataImportCron.name | default (printf "%s-import-cron" .Values.dataVolumeTemplate.sourceRef.name) }}
+  namespace: {{ .Values.dataVolumeTemplate.sourceRef.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "summit-connect.labels" . | nindent 4 }}
+  {{- with .Values.dataImportCron.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  # Garbage collect old imports
+  garbageCollect: {{ .Values.dataImportCron.garbageCollect | default "Outdated" }}
+  # Number of successful imports to keep
+  importsToKeep: {{ .Values.dataImportCron.importsToKeep | default 3 }}
+  # DataSource to manage
+  managedDataSource: {{ .Values.dataVolumeTemplate.sourceRef.name }}
+  # Cron schedule for imports (weekly on Tuesday at midnight)
+  schedule: {{ .Values.dataImportCron.schedule | quote }}
+  # Import template
+  template:
+    metadata: {}
+    spec:
+      source:
+        registry:
+          url: {{ .Values.dataVolumeTemplate.sourceImage | quote }}
+      storage:
+        resources:
+          requests:
+            storage: {{ .Values.dataVolumeTemplate.storage.resources.requests.storage }}
+        storageClassName: {{ .Values.dataVolumeTemplate.storage.storageClassName }}
+{{- end }}
