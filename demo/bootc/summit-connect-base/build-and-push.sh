@@ -10,6 +10,7 @@ CONTAINERFILE="Containerfile.bootc"
 RETRIES=3
 BUILDER_DEFAULT="registry.redhat.io/rhel10/bootc-image-builder:latest"
 QCOW_OUTPUT_DIR="output"
+SLEEP_TIME=2
 
 usage() {
 	cat <<EOF
@@ -26,6 +27,7 @@ Options:
 	--builder <image>    Use this bootc builder image (default: $BUILDER_DEFAULT)
 	--output <dir>       Output directory for qcow (default: $QCOW_OUTPUT_DIR)
 	--retries <N>        Number of push retries (default: $RETRIES)
+	--sleep <N>          Sleep time in seconds for dramatic pauses (default: $SLEEP_TIME)
 
 Examples:
 	# build, push, then create qcow2
@@ -70,6 +72,9 @@ while [[ $# -gt 0 ]]; do
 		--retries)
 			RETRIES="$2"; shift 2
 			;;
+		--sleep)
+			SLEEP_TIME="$2"; shift 2
+			;;
 		--)
 			shift; break
 			;;
@@ -103,8 +108,10 @@ else
 	exit 3
 fi
 
-echo "Using container CLI: $CLI"
-echo "Building ${CONTAINERFILE} -> ${IMAGE}"
+echo -e "\033[36mUsing container CLI: $CLI\033[0m"
+echo -e "\033[33mBuilding \033[36m${CONTAINERFILE}\033[33m -> \033[32m${IMAGE}\033[0m"
+# pause for dramatic effect
+sleep $SLEEP_TIME
 
 # Build the image
 if [[ "$CLI" == "podman" ]]; then
@@ -148,11 +155,11 @@ if [[ "$DO_QCOW" == true ]]; then
 	OUTPUT_DIR="$SCRIPT_DIR/$QCOW_OUTPUT_DIR"
 	mkdir -p "$OUTPUT_DIR"
 
-	echo "Make sure you're logged into the registries if they require authentication:"
-	echo "  podman login quay.io"
-	echo "  podman login registry.redhat.io"
+	echo -e "\033[33mMake sure you're logged into the registries if they require authentication:\033[0m"
+	echo -e "  \033[36mpodman login quay.io\033[0m"
+	echo -e "  \033[36mpodman login registry.redhat.io\033[0m"
 
-	echo "Running bootc image builder... output will be written to: $OUTPUT_DIR"
+	echo -e "\033[35mRunning bootc image builder...\033[33m output will be written to: \033[32m$OUTPUT_DIR\033[0m"
 
 	# Ensure root's podman store has the image (the builder runs under sudo)
 	if ! sudo podman image exists "$IMAGE" >/dev/null 2>&1; then
@@ -173,7 +180,10 @@ if [[ "$DO_QCOW" == true ]]; then
 		-v /var/lib/containers/storage:/var/lib/containers/storage \
 		"$BUILDER" --type qcow2 "$IMAGE")
 
-	echo "Command: ${cmd[*]}"
+	echo -e "\033[34mCommand: \033[36m${cmd[*]}\033[0m"
+	# sleep for dramatic effect
+	sleep $SLEEP_TIME
+	# Run the command
 	"${cmd[@]}"
 
 	echo "Builder finished. Check $OUTPUT_DIR for the generated qcow2 file(s)."
@@ -188,14 +198,14 @@ if [[ "$DO_QCOW" == true ]]; then
 				QCOW_IMAGE_TAG="$QCOW_IMAGE"
 			fi
 
-			echo "Found Containerfile.qcow2; building qcow container image -> $QCOW_IMAGE_TAG"
+			echo -e "\033[32mFound Containerfile.qcow2; \033[33mbuilding qcow container image \033[33m-> \033[36m$QCOW_IMAGE_TAG\033[0m"
 			# Build context should be the script dir so the Containerfile.qcow2 can reference files in output/
 			# Ensure the qcow file the Containerfile expects is present in the build context.
 			QCOW_SRC="$OUTPUT_DIR/qcow2/disk.qcow2"
 			QCOW_DST="$SCRIPT_DIR/disk.qcow2"
 			CLEANUP_QCOW=false
 			if [[ -f "$QCOW_SRC" ]]; then
-				echo "Copying $QCOW_SRC -> $QCOW_DST for build context"
+				echo -e "\033[33mCopying \033[36m$QCOW_SRC\033[33m -> \033[32m$QCOW_DST\033[33m for build context\033[0m"
 				cp -f "$QCOW_SRC" "$QCOW_DST"
 				CLEANUP_QCOW=true
 			else
@@ -203,6 +213,10 @@ if [[ "$DO_QCOW" == true ]]; then
 			fi
 			pushd "$SCRIPT_DIR" >/dev/null
 			if [[ "$CLI" == "podman" ]]; then
+				echo -e "\033[34mCommand: \033[36mpodman build -f Containerfile.qcow2 -t $QCOW_IMAGE_TAG .\033[0m"
+				# pause for dramatic effect
+				sleep $SLEEP_TIME
+				# Build the image
 				$CLI build -f Containerfile.qcow2 -t "$QCOW_IMAGE_TAG" .
 			else
 				$CLI build -f Containerfile.qcow2 -t "$QCOW_IMAGE_TAG" .
@@ -220,6 +234,10 @@ if [[ "$DO_QCOW" == true ]]; then
 				push_attempts=0
 				until [[ $push_attempts -ge $RETRIES ]]; do
 					set +e
+					# Add colors and echo command
+					echo -e "\033[34mCommand: \033[36m$CLI push $QCOW_IMAGE_TAG\033[0m"
+					# pause for dramatic effect
+					sleep $SLEEP_TIME
 					$CLI push "$QCOW_IMAGE_TAG"
 					rc=$?
 					set -e

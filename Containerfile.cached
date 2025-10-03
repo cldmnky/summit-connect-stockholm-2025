@@ -1,0 +1,40 @@
+# Containerfile optimized for vendored dependencies AND pull-through cache - fastest build option
+#### Builder stage: compile the Go binary using vendored dependencies ####
+# CHANGED: Using pull-through cache instead of external registry
+FROM image-registry.openshift-image-registry.svc:5000/summit-connect/ubi9-go-toolset-cache:latest as builder
+
+# Build in a writable temp location to avoid permission issues inside build containers
+WORKDIR /tmp/src
+# Ensure deterministic builds for linux/amd64
+ENV GOOS=linux GOARCH=amd64 CGO_ENABLED=0
+
+# Copy source to a temp path (avoids permission issues writing into mounted /workspace)
+COPY . /tmp/src
+
+# Remove the problematic test file that causes interface mismatch
+# This is a targeted fix for the kubevirt client-go test utilities issue
+RUN rm -f vendor/kubevirt.io/client-go/kubecli/kubevirt_test_utils.go
+
+# Build using vendored dependencies - this is much faster as it skips module downloads
+# The -mod=vendor flag tells Go to use the vendor directory instead of downloading modules
+RUN mkdir -p /tmp/bin && \
+    go build -mod=vendor -buildvcs=false -o /tmp/bin/summit-connect ./main.go
+
+#### Final runtime image: bootc base with systemd ####
+# CHANGED: Using pull-through cache instead of external registry
+FROM image-registry.openshift-image-registry.svc:5000/summit-connect/summit-connect-base-cache:latest
+LABEL MAINTAINER="Virt Corp <rhel@virt-corp.com>"
+
+# Copy the compiled Go binary and frontend assets from the builder
+COPY --from=builder /tmp/bin/summit-connect /usr/local/bin/summit-connect
+
+# Systemd service and mount units for the Summit Connect application
+COPY demo/bootc/summit-connect-app/summit-connect.service /etc/systemd/system/summit-connect.service
+
+# Create mount point directories and enable systemd units
+RUN chmod +x /usr/local/bin/summit-connect && \
+    mkdir -p /etc/summit-connect/config && \
+    mkdir -p /etc/summit-connect/.kubeconfigs && \
+    systemctl enable summit-connect
+
+EXPOSE 3001

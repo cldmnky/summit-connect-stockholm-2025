@@ -1,0 +1,37 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: ubi9-go-toolset-cache
+  namespace: summit-connect
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+  - name: latest
+    from:
+      kind: DockerImage
+      name: registry.redhat.io/ubi9/go-toolset:latest
+    importPolicy:
+      scheduled: true
+      insecure: false
+    referencePolicy:
+      type: Local
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: summit-connect-base-cache
+  namespace: summit-connect
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+  - name: latest
+    from:
+      kind: DockerImage
+      name: quay.io/cldmnky/summit-connect-base:latest
+    importPolicy:
+      scheduled: true
+      insecure: false
+    referencePolicy:
+      type: Local

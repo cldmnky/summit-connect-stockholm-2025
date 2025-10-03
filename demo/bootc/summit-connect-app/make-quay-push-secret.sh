@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="$SCRIPT_DIR/quay-push-secret.yaml"
 OUTPUT="$SCRIPT_DIR/quay-push-secret.generated.yaml"
 AUTH_JSON="${HOME}/.config/containers/auth.json"
-NAMESPACE=${NAMESPACE:-summit-connect-demo}
+NAMESPACE=${NAMESPACE:-summit-connect}
 
 apply=false
 if [[ ${1:-} == "--apply" ]]; then

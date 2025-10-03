@@ -146,7 +146,7 @@ stop-container:
 start: build
 	@mkdir -p $(LOG_DIR) $(PID_DIR)
 	@echo "Starting backend server (background)..."
-	@nohup ./summit-connect serve backend --port 3001 --config ./config/datacenters.yaml --watch-vms > $(LOG_DIR)/server.log 2>&1 & echo $$! > $(PID_DIR)/server.pid
+	@nohup ./bin/summit-connect serve backend --port 3001 --config ./config/datacenters.yaml --watch-vms > $(LOG_DIR)/server.log 2>&1 & echo $$! > $(PID_DIR)/server.pid
 	@sleep 1
 	@echo "Started. Server PID: `cat $(PID_DIR)/server.pid 2>/dev/null || echo -`"
 	@echo "Logs: $(LOG_DIR)/server.log"

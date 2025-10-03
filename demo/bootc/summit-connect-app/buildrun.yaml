@@ -1,12 +1,15 @@
-apiVersion: shipwright.io/v1alpha1
+apiVersion: shipwright.io/v1beta1
 kind: BuildRun
 metadata:
-  name: summit-connect-app-buildrun
-  namespace: summit-connect-demo
+  generateName: summit-connect-app
+  namespace: summit-connect
 spec:
-  buildRef:
+  build:
     name: summit-connect-app
-  serviceAccount:
-    serviceAccountName: shipwright-builder
-  timeout: 30m
-  # Optional timeout and params can be added here
+  serviceAccount: shipwright-builder
+  timeout: 30m0s
+  # Use VFS storage driver for OpenShift compatibility
+  paramValues:
+    - name: storage-driver
+      value: "vfs"  # VFS works better in restricted OpenShift environments
+  # Note: PVC volume removed - not supported by standard Buildah strategy

@@ -1,0 +1,10 @@
+apiVersion: shipwright.io/v1beta1
+kind: BuildRun
+metadata:
+  generateName: summit-connect-app-cached-
+  namespace: summit-connect
+spec:
+  build:
+    name: summit-connect-app-cached
+  serviceAccount: shipwright-builder
+  timeout: 30m0s
