@@ -19,5 +19,5 @@ spec:
     - name: storage-driver
       value: vfs  # OpenShift compatible storage driver
   output:
-    image: quay.io/cldmnky/summit-connect-app:cached
+    image: quay.io/cldmnky/summit-connect-app:latest
     pushSecret: quay-push-secret

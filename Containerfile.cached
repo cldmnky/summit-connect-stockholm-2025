@@ -1,6 +1,7 @@
-# Containerfile optimized for vendored dependencies - fastest build option
+# Containerfile optimized for vendored dependencies AND pull-through cache - fastest build option
 #### Builder stage: compile the Go binary using vendored dependencies ####
-FROM registry.redhat.io/ubi9/go-toolset as builder
+# CHANGED: Using pull-through cache instead of external registry
+FROM image-registry.openshift-image-registry.svc:5000/summit-connect/ubi9-go-toolset-cache:latest as builder
 
 # Build in a writable temp location to avoid permission issues inside build containers
 WORKDIR /tmp/src
@@ -20,7 +21,8 @@ RUN mkdir -p /tmp/bin && \
     go build -mod=vendor -buildvcs=false -o /tmp/bin/summit-connect ./main.go
 
 #### Final runtime image: bootc base with systemd ####
-FROM quay.io/cldmnky/summit-connect-base:latest
+# CHANGED: Using pull-through cache instead of external registry
+FROM image-registry.openshift-image-registry.svc:5000/summit-connect/summit-connect-base-cache:latest
 LABEL MAINTAINER="Virt Corp <rhel@virt-corp.com>"
 
 # Copy the compiled Go binary and frontend assets from the builder
