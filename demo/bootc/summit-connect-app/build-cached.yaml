@@ -16,8 +16,6 @@ spec:
   paramValues:
     - name: dockerfile
       value: Containerfile.cached  # Use vendored Containerfile for fastest builds
-    - name: storage-driver
-      value: vfs  # OpenShift compatible storage driver
   output:
     image: quay.io/cldmnky/summit-connect-app:latest
     pushSecret: quay-push-secret

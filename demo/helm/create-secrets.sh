@@ -5,8 +5,8 @@
 
 set -e
 
-NAMESPACE=${1:-summit-connect-demo}
-CONFIG_FILE=${2:-config/datacenters.yaml}
+NAMESPACE=${1:-summit-connect}
+CONFIG_FILE=${2:-demo/helm/summit-connect/files/datacenters.yaml}
 KUBECONFIGS_DIR=${3:-.kubeconfigs}
 SSH_KEY=${4:-~/.ssh/id_rsa.pub}
 

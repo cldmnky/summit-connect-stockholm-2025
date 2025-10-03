@@ -8,6 +8,3 @@ spec:
     name: summit-connect-app-cached
   serviceAccount: shipwright-builder
   timeout: 30m0s
-  paramValues:
-    - name: storage-driver
-      value: "vfs"  # OpenShift compatible storage driver
