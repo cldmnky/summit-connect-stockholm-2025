@@ -1,0 +1,21 @@
+apiVersion: shipwright.io/v1beta1
+kind: Build
+metadata:
+  name: summit-connect-app
+  namespace: summit-connect
+spec:
+  source:
+    type: Git
+    git:
+      url: https://github.com/cldmnky/summit-connect-stockholm-2025.git
+      revision: main
+    contextDir: .
+  strategy:
+    name: buildah
+    kind: ClusterBuildStrategy
+  paramValues:
+    - name: dockerfile
+      value: Containerfile  # Use vendored Containerfile for fastest builds
+  output:
+    image: quay.io/cldmnky/summit-connect-app:latest
+    pushSecret: quay-push-secret
