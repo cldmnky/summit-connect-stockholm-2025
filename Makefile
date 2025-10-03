@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 PWD := $(shell pwd)
 
-.PHONY: help build test test-go test-e2e build-container build-container-local run-container stop-container start stop dev status logs clean tools ko air
+.PHONY: help build test test-go test-e2e build-container build-container-local run-container stop-container start stop dev status logs clean tools ko air helm-bump-version
 
 # Local bin directory for tools
 LOCALBIN ?= $(shell pwd)/bin
@@ -15,6 +15,11 @@ IMAGE_REGISTRY := quay.io/cldmnky/summit-connect-stockholm-2025
 # Tool Binaries
 KO ?= $(LOCALBIN)/ko
 AIR ?= $(LOCALBIN)/air
+
+# Helm Chart Configuration
+HELM_CHART_DIR := demo/helm/summit-connect
+HELM_CHART_FILE := $(HELM_CHART_DIR)/Chart.yaml
+HELM_REPO_NAME := summit-connect-helm-repo-cluster
 
 help:
 	@echo "Makefile targets:"
@@ -33,6 +38,7 @@ help:
 	@echo "  logs           # tail server logs"
 	@echo "  clean          # remove logs and pid files"
 	@echo "  tools          # install all dev tools locally"
+	@echo "  helm-bump-version # bump helm chart version, commit, and refresh OpenShift repo"
 	@echo ""
 	@echo "URLs:"
 	@echo "  Frontend:      http://localhost:3001"
@@ -249,3 +255,80 @@ $(KO): $(LOCALBIN)
 air: $(AIR)
 $(AIR): $(LOCALBIN)
 	test -s $(LOCALBIN)/air || GOBIN=$(LOCALBIN) go install github.com/air-verse/air@latest
+
+##@ Helm Chart Management
+
+## Bump Helm chart version, commit changes, and refresh OpenShift repository
+helm-bump-version: BUMP_TYPE ?= patch
+helm-bump-version: DRY_RUN ?= false
+helm-bump-version:
+	@if [ "$(DRY_RUN)" = "true" ]; then echo "🔍 DRY RUN MODE - No changes will be made"; fi
+	@echo "Bumping Helm chart version ($(BUMP_TYPE))..."
+	@if [ ! -f $(HELM_CHART_FILE) ]; then \
+		echo "Error: Helm chart file not found: $(HELM_CHART_FILE)"; \
+		exit 1; \
+	fi
+	@if ! command -v yq >/dev/null 2>&1; then \
+		echo "Error: yq is required for version bumping but not installed."; \
+		echo "Install with: brew install yq (macOS) or apt-get install yq (Ubuntu)"; \
+		exit 1; \
+	fi
+	@echo "Current chart version: $$(yq eval '.version' $(HELM_CHART_FILE))"
+	@CURRENT_VERSION=$$(yq eval '.version' $(HELM_CHART_FILE)); \
+	if [ "$(BUMP_TYPE)" = "major" ]; then \
+		NEW_VERSION=$$(echo $$CURRENT_VERSION | awk -F. '{print $$1+1 ".0.0"}'); \
+	elif [ "$(BUMP_TYPE)" = "minor" ]; then \
+		NEW_VERSION=$$(echo $$CURRENT_VERSION | awk -F. '{print $$1 "." $$2+1 ".0"}'); \
+	else \
+		NEW_VERSION=$$(echo $$CURRENT_VERSION | awk -F. '{print $$1 "." $$2 "." $$3+1}'); \
+	fi; \
+	echo "New chart version: $$NEW_VERSION"; \
+	if [ "$(DRY_RUN)" != "true" ]; then \
+		yq eval ".version = \"$$NEW_VERSION\"" -i $(HELM_CHART_FILE); \
+		echo "Updated $(HELM_CHART_FILE)"; \
+		git add $(HELM_CHART_FILE); \
+		git commit -m "Bump Helm chart version to $$NEW_VERSION"; \
+		echo "Committed version bump to git"; \
+		git push origin $$(git branch --show-current); \
+		echo "Pushed changes to remote repository"; \
+	else \
+		echo "DRY RUN: Would update $(HELM_CHART_FILE) to version $$NEW_VERSION"; \
+		echo "DRY RUN: Would commit and push changes"; \
+	fi
+	@if [ "$(DRY_RUN)" != "true" ]; then \
+		echo "Waiting for GitHub Actions to update Helm repository..."; \
+		sleep 10; \
+		echo "Refreshing OpenShift Helm repository..."; \
+		if command -v oc >/dev/null 2>&1; then \
+			if oc get helmchartrepository $(HELM_REPO_NAME) >/dev/null 2>&1; then \
+				echo "Found Helm repository: $(HELM_REPO_NAME)"; \
+				oc patch helmchartrepository $(HELM_REPO_NAME) --type='merge' -p="{\"metadata\":{\"annotations\":{\"force-refresh\":\"$$(date +%s)\"}}}"; \
+				echo "Triggered refresh of OpenShift Helm repository"; \
+			else \
+				echo "Warning: Helm repository $(HELM_REPO_NAME) not found in cluster"; \
+				echo "Available repositories:"; \
+				oc get helmchartrepository 2>/dev/null || echo "No Helm repositories found"; \
+			fi; \
+		else \
+			echo "Warning: oc command not found. Skipping OpenShift repository refresh."; \
+			echo "To refresh manually, run: oc patch helmchartrepository $(HELM_REPO_NAME) --type='merge' -p='{\"metadata\":{\"annotations\":{\"force-refresh\":\"force\"}}}'"; \
+		fi; \
+	else \
+		echo "DRY RUN: Would wait for GitHub Actions and refresh OpenShift repository"; \
+	fi
+	@echo ""
+	@if [ "$(DRY_RUN)" != "true" ]; then \
+		echo "✅ Helm chart version bump completed!"; \
+		echo "📊 Check GitHub Actions: https://github.com/cldmnky/summit-connect-stockholm-2025/actions"; \
+		echo "🔄 OpenShift should pick up the new version within 1-2 minutes"; \
+	else \
+		echo "🔍 DRY RUN completed - no changes made"; \
+		echo "💡 Run without DRY_RUN=true to apply changes"; \
+	fi
+	@echo ""
+	@echo "Usage examples:"
+	@echo "  make helm-bump-version                           # patch bump (default: x.y.z+1)"
+	@echo "  make helm-bump-version BUMP_TYPE=minor          # minor bump (x.y+1.0)"
+	@echo "  make helm-bump-version BUMP_TYPE=major          # major bump (x+1.0.0)"
+	@echo "  make helm-bump-version DRY_RUN=true             # preview changes without applying"
+	@echo "  make helm-bump-version BUMP_TYPE=minor DRY_RUN=true  # preview minor bump"

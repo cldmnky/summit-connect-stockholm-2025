@@ -217,6 +217,27 @@ GOOS=linux GOARCH=amd64 go build -o summit-connect-linux
 GOOS=windows GOARCH=amd64 go build -o summit-connect.exe
 ```
 
+## Helm Chart Management
+
+This project includes automated Helm chart version management for OpenShift deployments:
+
+```bash
+# Bump chart version and update OpenShift repository
+make helm-bump-version                    # Patch version (x.y.z+1)
+make helm-bump-version BUMP_TYPE=minor   # Minor version (x.y+1.0)
+make helm-bump-version BUMP_TYPE=major   # Major version (x+1.0.0)
+
+# Preview changes without applying
+make helm-bump-version DRY_RUN=true
+```
+
+This automatically:
+- Updates the Helm chart version in `Chart.yaml`
+- Commits and pushes changes to trigger CI/CD
+- Refreshes the OpenShift Helm repository for immediate availability
+
+For more details, see [Helm Version Management Documentation](docs/HELM_VERSION_MANAGEMENT.md).
+
 ## Browser Compatibility
 
 - Chrome 60+
