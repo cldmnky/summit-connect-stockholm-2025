@@ -3,6 +3,17 @@ entries:
   summit-connect:
   - apiVersion: v2
     appVersion: 1.16.0
+    created: "2025-10-03T11:48:51.844031652Z"
+    description: A Helm chart for Summit Connect VM application with KubeVirt and
+      bootc pivot support
+    digest: 873ba6abe6c011c67ceb9ebadeae61b88fe5c19cad4ed0402e70847bfb09ba7a
+    name: summit-connect
+    type: application
+    urls:
+    - https://github.com/cldmnky/summit-connect-stockholm-2025/releases/download/summit-connect-0.2.0/summit-connect-0.2.0.tgz
+    version: 0.2.0
+  - apiVersion: v2
+    appVersion: 1.16.0
     created: "2025-10-03T11:09:42.504298577Z"
     description: A Helm chart for Summit Connect VM application with KubeVirt and
       bootc pivot support
@@ -34,4 +45,4 @@ entries:
     urls:
     - https://github.com/cldmnky/summit-connect-stockholm-2025/releases/download/summit-connect-0.1.2/summit-connect-0.1.2.tgz
     version: 0.1.2
-generated: "2025-10-03T11:09:42.504314447Z"
+generated: "2025-10-03T11:48:51.844049789Z"
