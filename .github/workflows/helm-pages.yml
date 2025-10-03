@@ -8,6 +8,11 @@ on:
       - 'demo/helm/summit-connect/**'
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
