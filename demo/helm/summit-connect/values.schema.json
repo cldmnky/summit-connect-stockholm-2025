@@ -1,0 +1,412 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Summit Connect Helm Chart Values",
+  "description": "Configuration values for the Summit Connect Stockholm 2025 demo application with KubeVirt VM and bootc pivot functionality",
+  "type": "object",
+  "properties": {
+    "vm": {
+      "title": "Virtual Machine Configuration",
+      "description": "Settings for the KubeVirt Virtual Machine",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enable VM",
+          "description": "Whether to deploy the Virtual Machine",
+          "type": "boolean",
+          "default": true
+        },
+        "name": {
+          "title": "VM Name",
+          "description": "Name of the Virtual Machine (will be templated with release name)",
+          "type": "string",
+          "default": "summit-connect-app",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+        },
+        "namespace": {
+          "title": "VM Namespace",
+          "description": "Kubernetes namespace for the VM",
+          "type": "string",
+          "default": "summit-connect",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+        },
+        "runStrategy": {
+          "title": "Run Strategy",
+          "description": "VM run strategy",
+          "type": "string",
+          "enum": ["Always", "RerunOnFailure", "Manual", "Halted"],
+          "default": "Always"
+        }
+      },
+      "required": ["enabled", "name", "namespace", "runStrategy"]
+    },
+    "dataVolumeTemplate": {
+      "title": "Data Volume Configuration",
+      "description": "Configuration for the VM's storage and boot image",
+      "type": "object",
+      "properties": {
+        "createDataSource": {
+          "title": "Create DataSource",
+          "description": "Whether to create a new DataSource (set to false if it already exists)",
+          "type": "boolean",
+          "default": false
+        },
+        "sourceImage": {
+          "title": "Source Image",
+          "description": "Container image URL for the boot disk",
+          "type": "string",
+          "default": "docker://quay.io/cldmnky/summit-connect-base:qcow2",
+          "pattern": "^(docker|oci)://.*"
+        },
+        "annotations": {
+          "title": "Annotations",
+          "description": "CDI annotations for the DataVolume",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "sourceRef": {
+          "title": "Source Reference",
+          "description": "Reference to existing DataSource",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["DataSource"]
+            },
+            "name": {
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string"
+            }
+          }
+        },
+        "storage": {
+          "title": "Storage Configuration",
+          "description": "Storage settings for the VM disk",
+          "type": "object",
+          "properties": {
+            "resources": {
+              "type": "object",
+              "properties": {
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "storage": {
+                      "title": "Storage Size",
+                      "description": "Size of the VM disk (e.g., 30Gi)",
+                      "type": "string",
+                      "pattern": "^[0-9]+(Mi|Gi|Ti)$",
+                      "default": "30Gi"
+                    }
+                  }
+                }
+              }
+            },
+            "storageClassName": {
+              "title": "Storage Class",
+              "description": "Storage class for the VM disk",
+              "type": "string",
+              "default": "lvms-vg1"
+            }
+          }
+        }
+      },
+      "required": ["createDataSource", "sourceImage"]
+    },
+    "dataImportCron": {
+      "title": "Data Import Cron Configuration",
+      "description": "Automatic image update configuration",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enable DataImportCron",
+          "description": "Whether to create automatic image updates",
+          "type": "boolean",
+          "default": false
+        },
+        "name": {
+          "title": "DataImportCron Name",
+          "description": "Name for the DataImportCron (auto-generated if empty)",
+          "type": "string"
+        },
+        "schedule": {
+          "title": "Cron Schedule",
+          "description": "Cron expression for update schedule",
+          "type": "string",
+          "default": "0 0 * * 2",
+          "pattern": "^[0-9*,-/]+ [0-9*,-/]+ [0-9*,-/]+ [0-9*,-/]+ [0-9*,-/]+$"
+        },
+        "garbageCollect": {
+          "title": "Garbage Collection Policy",
+          "description": "How to handle old imports",
+          "type": "string",
+          "enum": ["Outdated", "Never"],
+          "default": "Outdated"
+        },
+        "importsToKeep": {
+          "title": "Imports to Keep",
+          "description": "Number of old imports to retain",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 3
+        }
+      }
+    },
+    "instanceType": {
+      "title": "Instance Type",
+      "description": "VM instance type configuration",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "title": "Instance Type Kind",
+          "type": "string",
+          "enum": ["virtualmachineclusterinstancetype", "virtualmachineinstancetype"],
+          "default": "virtualmachineclusterinstancetype"
+        },
+        "name": {
+          "title": "Instance Type Name",
+          "description": "Name of the instance type",
+          "type": "string",
+          "enum": ["u1.micro", "u1.small", "u1.medium", "u1.large", "u1.xlarge", "u1.2xlarge", "u1.2xmedium"],
+          "default": "u1.2xmedium"
+        }
+      }
+    },
+    "preference": {
+      "title": "VM Preference",
+      "description": "VM preference configuration",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "title": "Preference Kind",
+          "type": "string",
+          "enum": ["virtualmachineclusterpreference", "virtualmachinepreference"],
+          "default": "virtualmachineclusterpreference"
+        },
+        "name": {
+          "title": "Preference Name",
+          "description": "Name of the VM preference",
+          "type": "string",
+          "enum": ["rhel.10", "rhel.9", "rhel.8", "centos.stream.10", "centos.stream.9", "fedora"],
+          "default": "rhel.10"
+        }
+      }
+    },
+    "network": {
+      "title": "Network Configuration",
+      "description": "VM networking settings",
+      "type": "object",
+      "properties": {
+        "macAddress": {
+          "title": "MAC Address",
+          "description": "MAC address for the VM (auto-generated if empty)",
+          "type": "string",
+          "pattern": "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$|^$"
+        }
+      }
+    },
+    "service": {
+      "title": "Service Configuration",
+      "description": "Kubernetes Service settings for the VM application",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Service Name",
+          "description": "Name of the service (defaults to 'headless')",
+          "type": "string"
+        },
+        "port": {
+          "title": "Application Port",
+          "description": "Port where the Summit Connect application listens",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 3001
+        },
+        "createRegularService": {
+          "title": "Create Regular Service",
+          "description": "Create ClusterIP service for ingress/routes",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "route": {
+      "title": "OpenShift Route Configuration",
+      "description": "Settings for external access via OpenShift Route",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enable Route",
+          "description": "Whether to create an OpenShift Route",
+          "type": "boolean",
+          "default": true
+        },
+        "host": {
+          "title": "Route Hostname",
+          "description": "Custom hostname for the route (auto-generated if empty)",
+          "type": "string",
+          "pattern": "^([a-z0-9-]+\\.)*[a-z0-9-]+$|^$"
+        },
+        "annotations": {
+          "title": "Route Annotations",
+          "description": "Additional annotations for the route",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tls": {
+          "title": "TLS Configuration",
+          "description": "TLS/SSL settings for the route",
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "title": "Enable TLS",
+              "description": "Whether to enable TLS encryption",
+              "type": "boolean",
+              "default": true
+            },
+            "termination": {
+              "title": "TLS Termination",
+              "description": "Where to terminate TLS",
+              "type": "string",
+              "enum": ["edge", "passthrough", "reencrypt"],
+              "default": "edge"
+            },
+            "insecureEdgeTerminationPolicy": {
+              "title": "Insecure Edge Termination Policy",
+              "description": "How to handle HTTP traffic",
+              "type": "string",
+              "enum": ["Allow", "Disable", "Redirect"],
+              "default": "Redirect"
+            }
+          }
+        }
+      }
+    },
+    "sshAccess": {
+      "title": "SSH Access Configuration",
+      "description": "Settings for SSH access to the VM",
+      "type": "object",
+      "properties": {
+        "secretName": {
+          "title": "SSH Secret Name",
+          "description": "Name of the secret containing SSH public key",
+          "type": "string",
+          "default": "ssh-key"
+        },
+        "createSecret": {
+          "title": "Create SSH Secret",
+          "description": "Whether to create the SSH secret (recommended to create externally)",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "cloudInit": {
+      "title": "Cloud-init Configuration",
+      "description": "VM initialization settings",
+      "type": "object",
+      "properties": {
+        "password": {
+          "title": "Default Password",
+          "description": "Password for the rhel user",
+          "type": "string",
+          "default": "sadg-sd7f-jumv"
+        },
+        "runcmd": {
+          "title": "Run Commands",
+          "description": "Commands to run during VM initialization",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "secrets": {
+      "title": "Secrets Configuration",
+      "description": "Configuration for various secrets used by the VM",
+      "type": "object",
+      "properties": {
+        "configSecretName": {
+          "title": "Config Secret Name",
+          "description": "Name of the secret containing application configuration",
+          "type": "string",
+          "default": "summit-connect-app-config"
+        },
+        "createConfigSecret": {
+          "title": "Create Config Secret",
+          "description": "Whether to create the config secret",
+          "type": "boolean",
+          "default": false
+        },
+        "kubeconfigsSecretName": {
+          "title": "Kubeconfigs Secret Name",
+          "description": "Name of the secret containing kubeconfig files",
+          "type": "string",
+          "default": "summit-connect-kubeconfigs"
+        },
+        "createKubeconfigsSecret": {
+          "title": "Create Kubeconfigs Secret",
+          "description": "Whether to create the kubeconfigs secret",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "bootcPivot": {
+      "title": "Bootc Pivot Configuration",
+      "description": "Settings for automatic OS pivot using bootc",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enable Bootc Pivot",
+          "description": "Whether to enable bootc pivot on first boot",
+          "type": "boolean",
+          "default": true
+        },
+        "targetImage": {
+          "title": "Target Image",
+          "description": "Container image to pivot to",
+          "type": "string",
+          "default": "quay.io/cldmnky/summit-connect-app:latest",
+          "pattern": "^[a-zA-Z0-9._-]+(:[0-9]+)?/[a-zA-Z0-9._/-]+(:[a-zA-Z0-9._-]+)?$"
+        },
+        "registryAuth": {
+          "title": "Registry Authentication",
+          "description": "Configuration for private registry access",
+          "type": "object",
+          "properties": {
+            "createAuthFile": {
+              "title": "Create Auth File",
+              "description": "Whether to create registry authentication file",
+              "type": "boolean",
+              "default": false
+            },
+            "authJson": {
+              "title": "Auth JSON",
+              "description": "Registry authentication configuration in JSON format",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "nameOverride": {
+      "title": "Name Override",
+      "description": "Override the chart name",
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "title": "Full Name Override", 
+      "description": "Override the full resource name",
+      "type": "string"
+    }
+  },
+  "required": ["vm", "dataVolumeTemplate", "instanceType", "preference"]
+}
